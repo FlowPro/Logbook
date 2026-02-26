@@ -6,23 +6,28 @@ on:
     tags:
       - 'v*'
 
+# Top-level permissions required for GitHub Releases in org repos
+permissions:
+  contents: write
+
 jobs:
   publish-tauri:
-    permissions:
-      contents: write
-
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-latest
             args: ''
+            rust-targets: ''
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'   # Apple Silicon
+            args: '--target aarch64-apple-darwin'
+            rust-targets: 'aarch64-apple-darwin'
           - platform: macos-latest
-            args: '--target x86_64-apple-darwin'    # Intel Mac
+            args: '--target x86_64-apple-darwin'
+            rust-targets: 'x86_64-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
+            rust-targets: ''
 
     runs-on: ${{ matrix.platform }}
 
@@ -39,7 +44,7 @@ jobs:
       - name: Install Rust (stable)
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.rust-targets }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
