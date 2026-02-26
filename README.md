@@ -261,4 +261,4 @@ logbuch/
 
 ## Lizenz
 
-Privates Projekt — nicht für die öffentliche Verbreitung bestimmt.
+Veröffentlicht unter der [MIT License](LICENSE) — frei nutzbar, veränderbar und weitergabe erlaubt, solange der Copyright-Hinweis erhalten bleibt.
