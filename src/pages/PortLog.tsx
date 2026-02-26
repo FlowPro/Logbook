@@ -98,6 +98,107 @@ function MooringIcon({ status }: { status?: MooringStatus }) {
 
 const ENTRY_LIMIT = 50
 
+// ── Port autocomplete ─────────────────────────────────────────────────────────
+interface PortOption { display: string; country: string }
+
+function PortAutocomplete({
+  label, value, onChange, onSelectWithCountry, options, required, error,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  onSelectWithCountry: (port: string, country: string) => void
+  options: PortOption[]
+  required?: boolean
+  error?: string
+}) {
+  const [open, setOpen] = useState(false)
+  const [focusIdx, setFocusIdx] = useState(0)
+  const listRef = useRef<HTMLUListElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const suggestions = useMemo(() => {
+    const q = value.trim().toLowerCase()
+    if (!q) return []
+    return options.filter(o => o.display.toLowerCase().startsWith(q) && o.display.toLowerCase() !== q)
+  }, [value, options])
+
+  useEffect(() => { setFocusIdx(0) }, [suggestions.length])
+
+  useEffect(() => {
+    if (listRef.current) {
+      const el = listRef.current.children[focusIdx] as HTMLElement | undefined
+      el?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [focusIdx])
+
+  function accept(opt: PortOption) {
+    onChange(opt.display)
+    onSelectWithCountry(opt.display, opt.country)
+    setOpen(false)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, suggestions.length - 1)) }
+    if (e.key === 'ArrowUp')   { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)) }
+    if (e.key === 'Enter')     { e.preventDefault(); accept(suggestions[focusIdx]) }
+    if (e.key === 'Tab') {
+      // Accept suggestion and skip the paired country-select (idx+1), landing on the next field
+      accept(suggestions[focusIdx])
+      e.preventDefault()
+      requestAnimationFrame(() => {
+        const form = inputRef.current?.closest('form')
+        if (!form) return
+        const focusables = Array.from(
+          form.querySelectorAll<HTMLElement>('input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"])')
+        )
+        const idx = focusables.indexOf(inputRef.current!)
+        if (idx >= 0 && focusables[idx + 2]) focusables[idx + 2].focus()
+      })
+    }
+    if (e.key === 'Escape')    { setOpen(false) }
+  }
+
+  return (
+    <div className="relative w-full">
+      {label && <label className="label">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+      <input
+        ref={inputRef}
+        className={`input${error ? ' border-red-500 focus:ring-red-500' : ''}`}
+        value={value}
+        autoComplete="off"
+        onChange={e => { onChange(e.target.value); setOpen(true) }}
+        onKeyDown={handleKeyDown}
+        onFocus={() => { if (suggestions.length > 0) setOpen(true) }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {open && suggestions.length > 0 && (
+        <ul
+          ref={listRef}
+          className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-auto max-h-52"
+        >
+          {suggestions.map((opt, i) => (
+            <li
+              key={opt.display}
+              onMouseDown={() => accept(opt)}
+              className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer ${
+                i === focusIdx
+                  ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              <span className="font-medium">{opt.display}</span>
+              {opt.country && <span className="text-xs text-gray-400 ml-2 flex-shrink-0">{opt.country}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // ── Passage card with embedded log entries ────────────────────────────────────
 interface PassageCardProps {
   passage: PassageEntry
@@ -284,31 +385,31 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
         <div className="border-t border-gray-100 dark:border-gray-700">
           {entries.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 uppercase">
-                    <th className="px-3 py-2 text-left">Datum / Zeit</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Position</th>
-                    <th className="px-3 py-2 text-right hidden md:table-cell">Kurs</th>
-                    <th className="px-3 py-2 text-right">SOG</th>
-                    <th className="px-3 py-2 text-right">Bft</th>
-                    <th className="px-3 py-2 text-right hidden md:table-cell">Oktas</th>
-                    <th className="px-3 py-2 text-right hidden lg:table-cell">hPa</th>
-                    <th className="px-3 py-2 text-center hidden md:table-cell">Antrieb / Status</th>
-                    <th className="px-3 py-2 text-right hidden md:table-cell">nm</th>
-                    <th className="px-3 py-2 text-right">Aktionen</th>
+                  <tr className="bg-gray-50 dark:bg-gray-800">
+                    <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Datum / Zeit</th>
+                    <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-sm:hidden">Position</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Kurs</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">SOG</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Bft</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Oktas</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-lg:hidden">hPa</th>
+                    <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Antrieb / Status</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">nm</th>
+                    <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {visibleEntries.map(entry => (
-                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                    <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-mono text-xs">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {entry.date}<br />{entry.time} UTC
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell whitespace-nowrap">
+                      <td className="px-3 py-2 max-sm:hidden whitespace-nowrap">
                         {formatCoordinate(entry.latitude)}<br />{formatCoordinate(entry.longitude)}
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell">
+                      <td className="px-3 py-2 text-right max-md:hidden">
                         {entry.courseTrue != null ? `${entry.courseTrue}°` : '—'}
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -317,15 +418,15 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
                       <td className="px-3 py-2 text-right">
                         <Badge variant="beaufort" beaufortForce={entry.windBeaufort} />
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell">
+                      <td className="px-3 py-2 text-right max-md:hidden">
                         <OktasBadge value={entry.cloudCoverOktas} />
                       </td>
-                      <td className="px-3 py-2 text-right hidden lg:table-cell font-mono text-xs whitespace-nowrap">
+                      <td className="px-3 py-2 text-right max-lg:hidden whitespace-nowrap">
                         {entry.baroPressureHPa ? (
                           <span>{trendIcon(entry.pressureTrend)} {entry.baroPressureHPa.toFixed(0)}</span>
                         ) : '—'}
                       </td>
-                      <td className="px-3 py-2 text-center hidden md:table-cell">
+                      <td className="px-3 py-2 text-center max-md:hidden">
                         <div className="flex flex-col items-center gap-0.5">
                           {entry.mooringStatus && entry.mooringStatus !== 'underway' ? (
                             <div className="flex items-center gap-1 text-teal-600 dark:text-teal-400">
@@ -359,7 +460,7 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right hidden md:table-cell">
+                      <td className="px-3 py-2 text-right max-md:hidden">
                         {entry.distanceSinceLastEntry.toFixed(1)}
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -464,10 +565,22 @@ export function PortLog() {
     return filteredPassages.every(p => p.locked)
   }, [filteredPassages, filterYear])
 
-  const { register, handleSubmit, watch, reset, control, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, reset, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
   })
+
+  // Build unique port options from all existing passages
+  const portOptions = useMemo((): PortOption[] => {
+    if (!passages) return []
+    // Use a Map keyed by lowercase port name; later entries overwrite earlier ones for country
+    const map = new Map<string, PortOption>()
+    for (const p of passages) {
+      if (p.departurePort?.trim()) map.set(p.departurePort.trim().toLowerCase(), { display: p.departurePort.trim(), country: p.departureCountry ?? '' })
+      if (p.arrivalPort?.trim())   map.set(p.arrivalPort.trim().toLowerCase(),   { display: p.arrivalPort.trim(),   country: p.arrivalCountry ?? '' })
+    }
+    return Array.from(map.values()).sort((a, b) => a.display.localeCompare(b.display))
+  }, [passages])
 
   const customsClearedOut = watch('customsClearedOut')
   const customsClearedIn = watch('customsClearedIn')
@@ -537,20 +650,20 @@ export function PortLog() {
     await db.passages.update(p.id!, { locked: newLocked, updatedAt: new Date().toISOString() })
     const desc = `${p.departurePort} → ${p.arrivalPort}`
     if (newLocked) {
-      toast.success('Passage gesperrt', { description: desc })
+      toast.success(t('portLog.passageLocked'), { description: desc })
     } else {
-      toast('Passage entsperrt', { description: desc })
+      toast(t('portLog.passageUnlocked'), { description: desc })
     }
   }
 
   function deletePassage(id: number) {
     const p = passages?.find(x => x.id === id)
-    const label = p ? `${p.departurePort} → ${p.arrivalPort}` : 'diese Passage'
+    const label = p ? `${p.departurePort} → ${p.arrivalPort}` : '—'
     setDeleteConfirm({ type: 'passage', id, label })
   }
 
   function deleteEntry(id: number) {
-    setDeleteConfirm({ type: 'entry', id, label: 'diesen Logeintrag' })
+    setDeleteConfirm({ type: 'entry', id, label: '' })
   }
 
   async function executeDelete() {
@@ -560,10 +673,10 @@ export function PortLog() {
     if (type === 'passage') {
       await db.logEntries.where('passageId').equals(id).delete()
       await db.passages.delete(id)
-      toast.success('Passage gelöscht')
+      toast.success(t('portLog.passageDeleted'))
     } else {
       await db.logEntries.delete(id)
-      toast.success('Logeintrag gelöscht')
+      toast.success(t('portLog.entryDeleted'))
     }
   }
 
@@ -572,14 +685,14 @@ export function PortLog() {
     if (!year) return
     const tolock = (passages ?? []).filter(p => p.departureDate?.startsWith(year) && !p.locked)
     if (tolock.length === 0) {
-      toast(`Alle Passagen ${year} bereits gesperrt`)
+      toast(t('portLog.seasonsAllLocked', { year }))
       return
     }
     setLockingYear(true)
     try {
       const now = new Date().toISOString()
       await Promise.all(tolock.map(p => db.passages.update(p.id!, { locked: true, updatedAt: now })))
-      toast.success(`Saison ${year} gesperrt`, { description: `${tolock.length} Passage(n) gesperrt` })
+      toast.success(t('portLog.seasonLocked', { year }), { description: t('portLog.seasonLockDesc', { count: tolock.length }) })
     } finally {
       setLockingYear(false)
     }
@@ -595,7 +708,7 @@ export function PortLog() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold">{t('nav.portLog')}</h1>
         <Button icon={<PlusCircle className="w-4 h-4" />} onClick={openAdd}>
-          Neue Passage
+          {t('portLog.newPassage')}
         </Button>
       </div>
 
@@ -607,7 +720,7 @@ export function PortLog() {
             onChange={e => setFilterYear(e.target.value)}
             className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
           >
-            <option value="all">Alle Jahre ({passages?.length ?? 0})</option>
+            <option value="all">{t('portLog.allYearsCount', { count: passages?.length ?? 0 })}</option>
             {availableYears.map(y => (
               <option key={y} value={y}>
                 {y} ({(passages ?? []).filter(p => p.departureDate?.startsWith(y)).length})
@@ -623,17 +736,17 @@ export function PortLog() {
                   ? 'border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40'
                   : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50'
               }`}
-              title={seasonFullyLocked ? `Alle Passagen ${filterYear} sind gesperrt` : `Alle Passagen ${filterYear} sperren`}
+              title={seasonFullyLocked ? t('portLog.seasonsAllLocked', { year: filterYear }) : t('portLog.lockSeasonTitle', { year: filterYear })}
             >
               {seasonFullyLocked
                 ? <Lock className="w-3.5 h-3.5" />
                 : <Archive className="w-3.5 h-3.5" />}
-              Saison {filterYear} {seasonFullyLocked ? 'gesperrt' : 'sperren'}
+              {seasonFullyLocked ? t('portLog.seasonLockedBtn', { year: filterYear }) : t('portLog.lockSeasonBtn', { year: filterYear })}
             </button>
           )}
           {filterYear !== 'all' && (
             <span className="text-sm text-gray-400">
-              {filteredPassages.length} Passage{filteredPassages.length !== 1 ? 'n' : ''}
+              {filteredPassages.length} {t('export.passages').toLowerCase()}
             </span>
           )}
         </div>
@@ -655,7 +768,7 @@ export function PortLog() {
                   await generatePassagePDF(p, entries, ship)
                   if (!p.locked) {
                     await db.passages.update(p.id!, { locked: true, updatedAt: new Date().toISOString() })
-                    toast.success('Passage gesperrt', { description: `${p.departurePort} → ${p.arrivalPort}` })
+                    toast.success(t('portLog.passageLocked'), { description: `${p.departurePort} → ${p.arrivalPort}` })
                   }
                 }}
                 onToggleLock={() => toggleLock(p)}
@@ -666,7 +779,7 @@ export function PortLog() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500">Keine Passagen für {filterYear}.</p>
+            <p className="text-gray-500">{t('portLog.noPassagesYear', { year: filterYear })}</p>
           </div>
         )
       ) : (
@@ -693,7 +806,7 @@ export function PortLog() {
           </>
         }
       >
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Date/time info – auto-derived from entries */}
           <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-sm text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
             <p className="font-medium mb-0.5">Datum & Uhrzeit</p>
@@ -703,11 +816,17 @@ export function PortLog() {
           <div>
             <h4 className="font-semibold text-sm mb-3">{t('portLog.departure')}</h4>
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <PortAutocomplete
                 label={`${t('portLog.port')} (Abfahrt)`}
-                {...register('departurePort')}
-                error={errors.departurePort?.message}
+                value={watch('departurePort')}
+                onChange={v => setValue('departurePort', v, { shouldValidate: true })}
+                onSelectWithCountry={(port, country) => {
+                  setValue('departurePort', port, { shouldValidate: true })
+                  if (country) setValue('departureCountry', country)
+                }}
+                options={portOptions}
                 required
+                error={errors.departurePort?.message}
               />
               <Controller name="departureCountry" control={control} render={({ field }) => (
                 <CountrySelect label={t('portLog.country')} valueType="name" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
@@ -717,11 +836,17 @@ export function PortLog() {
           <div>
             <h4 className="font-semibold text-sm mb-3">{t('portLog.arrival')}</h4>
             <div className="grid grid-cols-2 gap-4">
-              <Input
+              <PortAutocomplete
                 label={`${t('portLog.port')} (Ankunft)`}
-                {...register('arrivalPort')}
-                error={errors.arrivalPort?.message}
+                value={watch('arrivalPort')}
+                onChange={v => setValue('arrivalPort', v, { shouldValidate: true })}
+                onSelectWithCountry={(port, country) => {
+                  setValue('arrivalPort', port, { shouldValidate: true })
+                  if (country) setValue('arrivalCountry', country)
+                }}
+                options={portOptions}
                 required
+                error={errors.arrivalPort?.message}
               />
               <Controller name="arrivalCountry" control={control} render={({ field }) => (
                 <CountrySelect label={t('portLog.country')} valueType="name" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
@@ -776,12 +901,12 @@ export function PortLog() {
       <Modal
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        title="Löschen bestätigen"
+        title={t('portLog.deleteConfirmTitle')}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>Abbrechen</Button>
-            <Button variant="danger" size="sm" onClick={executeDelete}>Löschen</Button>
+            <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>{t('common.cancel')}</Button>
+            <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={executeDelete}>{t('common.delete')}</Button>
           </>
         }
       >
@@ -789,8 +914,8 @@ export function PortLog() {
           <Trash2 className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-gray-700 dark:text-gray-300">
             {deleteConfirm?.type === 'passage'
-              ? <>Passage <span className="font-medium">{deleteConfirm.label}</span> und alle zugehörigen Logeinträge löschen?</>
-              : <>Logeintrag löschen?</>
+              ? t('portLog.deletePassageText', { label: deleteConfirm.label })
+              : t('portLog.deleteEntryText')
             }
           </p>
         </div>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface Country {
   code: string
@@ -221,8 +222,11 @@ interface CountrySelectProps {
 export function CountrySelect({
   label, valueType = 'name', value = '', onChange, onBlur, name, error, required,
 }: CountrySelectProps) {
+  const { t } = useTranslation()
   const [inputValue, setInputValue] = useState(() => getDisplayText(value, valueType))
   const [open, setOpen] = useState(false)
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const listRef = useRef<HTMLDivElement>(null)
 
   // Sync display text when value changes externally (e.g. reset())
   useEffect(() => {
@@ -237,10 +241,21 @@ export function CountrySelect({
     )
   }, [inputValue])
 
+  // Reset focused index when filtered list changes
+  useEffect(() => { setFocusedIndex(-1) }, [inputValue])
+
+  // Scroll focused item into view
+  useEffect(() => {
+    if (focusedIndex < 0 || !listRef.current) return
+    const item = listRef.current.children[focusedIndex] as HTMLElement
+    item?.scrollIntoView({ block: 'nearest' })
+  }, [focusedIndex])
+
   function handleSelect(country: Country) {
     const val = valueType === 'code' ? country.code : country.name
-    setInputValue(`${country.flag} ${country.name}`)
+    setInputValue(country.name)
     setOpen(false)
+    setFocusedIndex(-1)
     onChange?.(val)
     onBlur?.()
   }
@@ -248,13 +263,38 @@ export function CountrySelect({
   function handleFocus() {
     setInputValue('')
     setOpen(true)
+    setFocusedIndex(-1)
   }
 
   function handleBlur() {
     setTimeout(() => {
       setOpen(false)
+      setFocusedIndex(-1)
       setInputValue(getDisplayText(value, valueType))
     }, 150)
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!open) {
+      if (e.key === 'ArrowDown') { setOpen(true); setFocusedIndex(0) }
+      return
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setFocusedIndex(i => Math.min(i + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setFocusedIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && focusedIndex >= 0) {
+      e.preventDefault()
+      const country = filtered[focusedIndex]
+      if (country) handleSelect(country)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      setFocusedIndex(-1)
+      setInputValue(getDisplayText(value, valueType))
+    }
   }
 
   return (
@@ -272,27 +312,41 @@ export function CountrySelect({
         onChange={(e) => { setInputValue(e.target.value); setOpen(true) }}
         onFocus={handleFocus}
         onBlur={handleBlur}
-        placeholder="Land suchen…"
+        onKeyDown={handleKeyDown}
+        placeholder={t('common.searchCountry')}
         autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={open}
         className={`input ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
       />
       {open && (
-        <div className="absolute z-50 w-full mt-1 max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
-          {filtered.length > 0 ? filtered.map(country => (
+        <div
+          ref={listRef}
+          role="listbox"
+          className="absolute z-50 w-full mt-1 max-h-52 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg"
+        >
+          {filtered.length > 0 ? filtered.map((country, i) => (
             <button
               key={country.code}
               type="button"
+              role="option"
+              aria-selected={i === focusedIndex}
               onMouseDown={(e) => { e.preventDefault(); handleSelect(country) }}
-              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+              onMouseEnter={() => setFocusedIndex(i)}
+              className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 ${
+                i === focusedIndex
+                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
             >
-              <span className="text-base leading-none">{country.flag}</span>
+              <span className={`fi fi-${country.code.toLowerCase()} flex-shrink-0`} />
               <span className="text-gray-900 dark:text-gray-100">{country.name}</span>
               {valueType === 'code' && (
                 <span className="ml-auto text-xs text-gray-400 font-mono">{country.code}</span>
               )}
             </button>
           )) : (
-            <p className="px-3 py-2 text-sm text-gray-500">Kein Land gefunden</p>
+            <p className="px-3 py-2 text-sm text-gray-500">{t('common.noCountryFound')}</p>
           )}
         </div>
       )}

@@ -177,12 +177,12 @@ export function ShipData() {
           <div className="space-y-4">
             <div className={r2}>
               <Input label={t('ship.engineType')} {...register('engineType')} />
-              <Input label={t('ship.enginePower')} type="number" {...register('enginePowerKw', { valueAsNumber: true })} />
+              <Input label={t('ship.enginePower')} type="text" inputMode="decimal" {...register('enginePowerKw', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
             </div>
             <div className={r3}>
               <Input label={t('ship.fuelType')} {...register('fuelType')} />
-              <Input label={t('ship.fuelCapacity')} type="number" {...register('fuelCapacityL', { valueAsNumber: true })} />
-              <Input label={t('ship.waterCapacity')} type="number" {...register('waterCapacityL', { valueAsNumber: true })} />
+              <Input label={t('ship.fuelCapacity')} type="text" inputMode="decimal" {...register('fuelCapacityL', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
+              <Input label={t('ship.waterCapacity')} type="text" inputMode="decimal" {...register('waterCapacityL', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
             </div>
           </div>
         </Card>

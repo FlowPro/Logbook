@@ -223,6 +223,14 @@ export type MaintenanceCategory = 'engine' | 'rigging' | 'safety' | 'hull' | 'el
 export type MaintenanceStatus   = 'planned' | 'in_progress' | 'done'
 export type MaintenancePriority = 'low' | 'medium' | 'high' | 'critical'
 
+export interface MaintenanceChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}
+
+export type MaintenanceRecurrenceType = 'days' | 'weeks' | 'months' | 'years' | 'engine_hours'
+
 export interface MaintenanceEntry {
   id?: number
   // Kanban fields (optional for backward compatibility with old entries)
@@ -241,6 +249,12 @@ export interface MaintenanceEntry {
   currency?: string
   performedBy?: string
   notes?: string
+  // Subtask checklist
+  checklist?: MaintenanceChecklistItem[]
+  // Recurrence
+  recurring?: boolean
+  recurrenceType?: MaintenanceRecurrenceType
+  recurrenceValue?: number
   // Metadata
   createdAt: string
   updatedAt: string
@@ -292,7 +306,7 @@ export interface ChecklistItem {
 export interface SafetyChecklist {
   id?: number
   date: string
-  type: 'pre_departure' | 'arrival' | 'storm' | 'night'
+  type: 'pre_departure' | 'arrival' | 'storm' | 'night' | 'crew_briefing'
   items: ChecklistItem[]
   notes: string
   createdAt: string

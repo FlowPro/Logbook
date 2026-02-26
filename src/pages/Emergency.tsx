@@ -58,8 +58,8 @@ export function Emergency() {
       ? `${formatCoordinate(lastEntry.latitude)} ${formatCoordinate(lastEntry.longitude)}`
       : null
 
-  const shipName = ship?.name ?? '[SCHIFFSNAME]'
-  const callSign = ship?.callSign ?? '[RUFZEICHEN]'
+  const shipName = ship?.name ?? '[VESSEL NAME]'
+  const callSign = ship?.callSign ?? '[CALL SIGN]'
   const mmsi = ship?.mmsi ?? '[MMSI]'
   const crewCount = activeCrew?.length ?? '?'
 
@@ -71,23 +71,22 @@ export function Emergency() {
         onClick={saveMOBPosition}
       >
         <AlertTriangle className="w-16 h-16 mx-auto mb-3 animate-pulse" />
-        <div className="text-4xl font-black tracking-wider mb-2">MANN ÜBER BORD</div>
-        <div className="text-xl font-bold tracking-wider mb-4">MAN OVERBOARD</div>
-        <div className="text-lg opacity-90">⬆ TIPPEN zum Speichern der MOB-Position</div>
-        {gpsLoading && <div className="mt-2 text-sm opacity-75">GPS wird abgerufen...</div>}
+        <div className="text-4xl font-black tracking-wider mb-4">{t('emergency.mob')}</div>
+        <div className="text-lg opacity-90">{t('emergency.tapToSaveMOB')}</div>
+        {gpsLoading && <div className="mt-2 text-sm opacity-75">{t('emergency.gpsLoading')}</div>}
       </div>
 
       {/* MOB Position display */}
       {mobPosition && (
         <Card className="border-2 border-red-500">
           <div className="text-center">
-            <div className="text-red-600 dark:text-red-400 font-bold text-lg mb-2">MOB POSITION GESPEICHERT</div>
+            <div className="text-red-600 dark:text-red-400 font-bold text-lg mb-2">{t('emergency.mobSaved')}</div>
             <div className="font-mono text-xl font-bold">
               {formatCoordinate(mobPosition.lat)} {formatCoordinate(mobPosition.lon)}
             </div>
             <div className="text-sm text-gray-500 mt-1">{mobPosition.time}</div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Sofort wenden – Motor starten – AIS MOB aktivieren
+              {t('emergency.mobAction')}
             </p>
           </div>
         </Card>
@@ -99,7 +98,7 @@ export function Emergency() {
           <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
             <Anchor className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="font-bold text-lg">{ship?.name ?? 'Schiff nicht eingetragen'}</h2>
+          <h2 className="font-bold text-lg">{ship?.name ?? t('emergency.shipNotRegistered')}</h2>
         </div>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
@@ -107,15 +106,15 @@ export function Emergency() {
             <div className="font-mono font-bold text-lg">{ship?.mmsi ?? '—'}</div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Rufzeichen</div>
+            <div className="text-xs text-gray-500 mb-1">{t('emergency.callSign')}</div>
             <div className="font-mono font-bold text-lg">{ship?.callSign ?? '—'}</div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Flagge</div>
+            <div className="text-xs text-gray-500 mb-1">{t('emergency.flag')}</div>
             <div className="font-bold">{ship?.flag ?? '—'}</div>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3">
-            <div className="text-xs text-gray-500 mb-1">Personen an Bord</div>
+            <div className="text-xs text-gray-500 mb-1">{t('emergency.crewOnBoard')}</div>
             <div className="font-bold text-xl">{activeCrew?.length ?? '—'}</div>
           </div>
         </div>
@@ -123,7 +122,7 @@ export function Emergency() {
         {(mobPosition || lastEntry) && (
           <div className="mt-3 bg-blue-50 dark:bg-blue-950 rounded-lg p-3">
             <div className="text-xs text-gray-500 mb-1">
-              {mobPosition ? 'MOB-Position' : 'Letzte bekannte Position'}
+              {mobPosition ? t('emergency.mobPositionLabel') : t('emergency.lastKnownPosition')}
             </div>
             <div className="font-mono">{maydayPos}</div>
             {lastEntry && !mobPosition && (
@@ -139,7 +138,7 @@ export function Emergency() {
           <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
             <Radio className="w-5 h-5 text-orange-600" />
           </div>
-          <h2 className="font-bold text-lg">Notfunk</h2>
+          <h2 className="font-bold text-lg">{t('emergency.distressRadio')}</h2>
         </div>
 
         <div className="space-y-3">
@@ -147,42 +146,38 @@ export function Emergency() {
           <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
             <div>
               <div className="font-bold text-red-700 dark:text-red-400">MAYDAY</div>
-              <div className="text-sm text-red-600 dark:text-red-500">Kanal 16 DSC – Lebensgefahr</div>
+              <div className="text-sm text-red-600 dark:text-red-500">{t('emergency.maydayDesc')}</div>
             </div>
             <div className="font-mono font-bold text-2xl text-red-600">16</div>
           </div>
           <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
             <div>
               <div className="font-bold text-orange-700 dark:text-orange-400">PAN-PAN</div>
-              <div className="text-sm text-orange-600 dark:text-orange-500">Kanal 16 – Dringlichkeit (keine Lebensgefahr)</div>
+              <div className="text-sm text-orange-600 dark:text-orange-500">{t('emergency.panpanDesc')}</div>
             </div>
             <div className="font-mono font-bold text-2xl text-orange-600">16</div>
           </div>
 
-          {/* MAYDAY speech template – Wikipedia/SOLAS format (English – international maritime standard) */}
+          {/* MAYDAY speech template – SOLAS format (always English – international maritime standard) */}
           <div className="p-4 bg-red-50 dark:bg-red-950/60 rounded-xl border border-red-300 dark:border-red-800">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-bold text-red-700 dark:text-red-400">MAYDAY Call (SOLAS / ITU)</span>
               <span className="text-xs font-mono text-gray-500">{formatUTCTime(currentTime)}</span>
             </div>
             <div className="font-mono text-sm space-y-1.5 text-gray-800 dark:text-gray-200">
-              {/* Line 1 */}
               <p><span className="font-extrabold text-red-600 dark:text-red-400 text-base">MAYDAY MAYDAY MAYDAY</span></p>
-              {/* Line 2 – Vessel identification */}
               <p>
                 {'This is '}
                 <span className="font-bold text-blue-700 dark:text-blue-300">{shipName}</span>
                 {' '}<span className="font-bold text-blue-700 dark:text-blue-300">{shipName}</span>
                 {' '}<span className="font-bold text-blue-700 dark:text-blue-300">{shipName}</span>
               </p>
-              {/* Line 3 – Call sign and MMSI */}
               <p>
                 {'Call Sign '}
                 <span className="font-bold text-blue-700 dark:text-blue-300">{callSign}</span>
                 {', MMSI '}
                 <span className="font-bold text-blue-700 dark:text-blue-300">{mmsi}</span>
               </p>
-              {/* Line 4 – Position */}
               <p>
                 {'My position is '}
                 {maydayPos
@@ -190,21 +185,17 @@ export function Emergency() {
                   : <span className="italic text-orange-600">[position unknown – use GPS!]</span>
                 }
               </p>
-              {/* Line 5 – Nature of distress */}
               <p className="text-gray-500 dark:text-gray-400 italic">
                 [<span className="not-italic text-orange-700 dark:text-orange-400">state nature of distress:</span>
                 {' '}e.g. "We are sinking" · "Fire on board" · "Man overboard" · "Medical emergency"]
               </p>
-              {/* Line 6 – Persons on board */}
               <p>
                 <span className="font-bold text-blue-700 dark:text-blue-300">{crewCount}</span>
                 {' persons on board'}
               </p>
-              {/* Line 7 – Additional info */}
               <p className="text-gray-500 dark:text-gray-400 italic">
                 [Vessel type: {ship?.type ?? 'sailing yacht'} · Colour: … · EPIRB: activated/—]
               </p>
-              {/* Line 8 – Closing */}
               <p>
                 <span className="font-extrabold text-red-600 dark:text-red-400">{'MAYDAY '}
                 <span className="text-blue-700 dark:text-blue-300">{shipName}</span>
@@ -239,17 +230,17 @@ export function Emergency() {
             <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
               <Users className="w-5 h-5 text-green-600" />
             </div>
-            <h2 className="font-bold text-lg">Crew & Notfallkontakte</h2>
+            <h2 className="font-bold text-lg">{t('emergency.crewAndContacts')}</h2>
           </div>
           <div className="space-y-3">
             {activeCrew.map(m => (
               <div key={m.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div>
                   <div className="font-medium">{m.firstName} {m.lastName}</div>
-                  <div className="text-sm text-gray-500">{m.role === 'skipper' ? 'Skipper' : m.role === 'crew' ? 'Crew' : 'Passagier'}</div>
+                  <div className="text-sm text-gray-500">{t(`crew.roles.${m.role}`)}</div>
                   {m.emergencyContact && (
                     <div className="text-xs text-gray-500 mt-0.5">
-                      Notfall: {m.emergencyContact} · {m.emergencyPhone}
+                      {t('emergency.emergencyLabel')} {m.emergencyContact} · {m.emergencyPhone}
                     </div>
                   )}
                 </div>

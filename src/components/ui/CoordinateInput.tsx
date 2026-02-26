@@ -38,12 +38,10 @@ export function CoordinateInput({ label, value, onChange, type, error }: Coordin
         <div className="text-gray-400 text-lg font-light pb-5">°</div>
         <div className="flex-1">
           <input
-            type="number"
-            min={0}
-            max={59.999}
-            step={0.001}
+            type="text"
+            inputMode="decimal"
             value={value.minutes}
-            onChange={e => onChange({ ...value, minutes: parseFloat(e.target.value) || 0 })}
+            onChange={e => onChange({ ...value, minutes: parseFloat(String(e.target.value).replace(',', '.')) || 0 })}
             className="input text-center font-mono"
             placeholder="00.000"
           />

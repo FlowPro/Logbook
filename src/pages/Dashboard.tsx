@@ -5,18 +5,18 @@ import { format } from 'date-fns'
 import {
   PlusCircle,
   Navigation,
-  Gauge,
   Anchor,
   Users,
   BookOpen,
   ArrowRight,
   Zap,
-  Wind,
   Building2,
   CircleDot,
   GitCommitHorizontal,
+  Wrench,
+  AlertTriangle,
 } from 'lucide-react'
-import type { MooringStatus } from '../db/models'
+import type { MooringStatus, MaintenanceEntry } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { db } from '../db/database'
@@ -36,21 +36,6 @@ function trendIcon(trend?: string): string {
   }
 }
 
-const MOORING_LABEL: Record<string, string> = {
-  anchored:         'Anker',
-  moored_marina:    'Hafen',
-  moored_buoy:      'Boje',
-  moored_alongside: 'Längs.',
-}
-
-const MOORING_STATUS_LABEL: Record<string, string> = {
-  underway:         'Unterwegs',
-  anchored:         'Vor Anker',
-  moored_marina:    'Im Hafen',
-  moored_buoy:      'An Boje',
-  moored_alongside: 'Längsseits',
-}
-
 function MooringIcon({ status }: { status?: MooringStatus }) {
   if (!status || status === 'underway') return null
   const cls = 'w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0'
@@ -63,9 +48,24 @@ function MooringIcon({ status }: { status?: MooringStatus }) {
   }
 }
 
+function getDueInfo(dueDate: string, today: string): { label: string; colorClass: string } {
+  if (dueDate < today) {
+    const days = Math.round((new Date(today).getTime() - new Date(dueDate).getTime()) / 86400000)
+    return { label: `overdue:${days}`, colorClass: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' }
+  }
+  if (dueDate === today) {
+    return { label: 'today', colorClass: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' }
+  }
+  const days = Math.round((new Date(dueDate).getTime() - new Date(today).getTime()) / 86400000)
+  return { label: `soon:${days}`, colorClass: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' }
+}
+
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+
+  const today = new Date().toISOString().slice(0, 10)
+  const in14days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
   const lastEntry = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().first()
@@ -80,11 +80,76 @@ export function Dashboard() {
   const totalEntries = useLiveQuery(() => db.logEntries.count())
 
   const totalDistance = useLiveQuery(async () => {
-    // each() uses an IndexedDB cursor – never loads all entries into RAM
     let sum = 0
     await db.logEntries.each(e => { sum += e.distanceSinceLastEntry ?? 0 })
     return sum
   })
+
+  const alertsData = useLiveQuery(async () => {
+    const cutoff = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    let maxEngineHours = 0
+    await db.logEntries.each(e => { if ((e.engineHoursTotal ?? 0) > maxEngineHours) maxEngineHours = e.engineHoursTotal! })
+    const tasks = await db.maintenance
+      .filter((e: MaintenanceEntry) => {
+        if (e.archivedAt || e.status === 'done') return false
+        if (e.dueDate && e.dueDate <= cutoff) return true
+        if (e.nextServiceDueHours != null && maxEngineHours > 0 && e.nextServiceDueHours <= maxEngineHours + 50) return true
+        return false
+      })
+      .toArray()
+    tasks.sort((a, b) => {
+      // Overdue items first (date or engine hours), then by proximity
+      const aDateOverdue = a.dueDate ? a.dueDate < cutoff.slice(0, 10) : false
+      const bDateOverdue = b.dueDate ? b.dueDate < cutoff.slice(0, 10) : false
+      if (aDateOverdue !== bDateOverdue) return aDateOverdue ? -1 : 1
+      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate)
+      if (a.dueDate) return -1
+      if (b.dueDate) return 1
+      return (a.nextServiceDueHours ?? 0) - (b.nextServiceDueHours ?? 0)
+    })
+    return { tasks, maxEngineHours }
+  }) ?? { tasks: [], maxEngineHours: 0 }
+
+  const maintenanceAlerts = alertsData.tasks
+  const currentEngineHours = alertsData.maxEngineHours
+
+  function renderDueLabel(dueDate: string) {
+    const { label, colorClass } = getDueInfo(dueDate, today)
+    let text: string
+    if (label === 'today') {
+      text = t('dashboard.dueTodayLabel')
+    } else if (label.startsWith('overdue:')) {
+      text = t('dashboard.overdueDays', { count: Number(label.split(':')[1]) })
+    } else {
+      text = t('dashboard.dueDays', { count: Number(label.split(':')[1]) })
+    }
+    return (
+      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
+        {text}
+      </span>
+    )
+  }
+
+  function renderEngineHoursLabel(task: MaintenanceEntry) {
+    if (task.nextServiceDueHours == null || currentEngineHours <= 0) return null
+    const overdue = currentEngineHours >= task.nextServiceDueHours
+    const colorClass = overdue
+      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+    const text = overdue
+      ? t('maintenance.engineHoursOverdue', { hours: Math.round(currentEngineHours - task.nextServiceDueHours) })
+      : t('maintenance.engineHoursDue', { current: Math.round(currentEngineHours), due: task.nextServiceDueHours })
+    return (
+      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
+        {text}
+      </span>
+    )
+  }
+
+  const overdueCount = maintenanceAlerts.filter(task =>
+    (task.dueDate && task.dueDate < today) ||
+    (task.nextServiceDueHours != null && currentEngineHours > 0 && currentEngineHours >= task.nextServiceDueHours)
+  ).length
 
   return (
     <div className="space-y-6">
@@ -109,7 +174,7 @@ export function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={<BookOpen className="w-5 h-5" />}
-          label={t('common.total') + ' Einträge'}
+          label={t('dashboard.totalEntries')}
           value={String(totalEntries ?? 0)}
           color="blue"
         />
@@ -127,12 +192,55 @@ export function Dashboard() {
         />
         <StatCard
           icon={<Anchor className="w-5 h-5" />}
-          label={ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : 'Schiff'}
-          value={ship?.name ?? 'Nicht eingetragen'}
+          label={ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
+          value={ship?.name ?? '—'}
           color="orange"
           small
         />
       </div>
+
+      {/* Maintenance alerts (if any due within 14 days) */}
+      {maintenanceAlerts.length > 0 && (
+        <Card>
+          <CardHeader
+            title={t('dashboard.maintenanceAlerts')}
+            icon={overdueCount > 0
+              ? <AlertTriangle className="w-4 h-4 text-red-500" />
+              : <Wrench className="w-4 h-4" />
+            }
+            action={
+              <Link to="/maintenance" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                {t('nav.maintenance')} <ArrowRight className="w-3 h-3" />
+              </Link>
+            }
+          />
+          <ul className="space-y-2">
+            {maintenanceAlerts.slice(0, 5).map(task => (
+              <li
+                key={task.id}
+                onClick={() => navigate('/maintenance', { state: { editId: task.id } })}
+                className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+              >
+                <Wrench className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                <span className="flex-1 text-sm font-medium truncate">
+                  {task.description || t('maintenance.noTitle')}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {t(`maintenance.categories.${task.category}`)}
+                </span>
+                {task.dueDate
+                  ? renderDueLabel(task.dueDate)
+                  : renderEngineHoursLabel(task)}
+              </li>
+            ))}
+          </ul>
+          {maintenanceAlerts.length > 5 && (
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              +{maintenanceAlerts.length - 5} {t('nav.maintenance').toLowerCase()}
+            </p>
+          )}
+        </Card>
+      )}
 
       {/* Last entry + Quick stats */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -177,11 +285,11 @@ export function Dashboard() {
                 <span className="font-mono text-sm">{lastEntry.baroPressureHPa} hPa</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Liegestatus</span>
+                <span className="text-sm text-gray-500">{t('logEntry.mooringStatus')}</span>
                 <div className="flex items-center gap-1.5">
                   <MooringIcon status={lastEntry.mooringStatus} />
                   <span className="font-mono text-sm">
-                    {MOORING_STATUS_LABEL[lastEntry.mooringStatus ?? 'underway'] ?? 'Unterwegs'}
+                    {t(`logEntry.mooringStatuses.${lastEntry.mooringStatus ?? 'underway'}`)}
                   </span>
                 </div>
               </div>
@@ -251,18 +359,18 @@ export function Dashboard() {
             </h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800 text-xs text-gray-500 uppercase">
-                  <th className="px-3 py-2 text-left">Datum / Zeit</th>
-                  <th className="px-3 py-2 text-left hidden sm:table-cell">Position</th>
-                  <th className="px-3 py-2 text-right hidden md:table-cell">Kurs</th>
-                  <th className="px-3 py-2 text-right">SOG</th>
-                  <th className="px-3 py-2 text-right">Bft</th>
-                  <th className="px-3 py-2 text-right hidden md:table-cell">Oktas</th>
-                  <th className="px-3 py-2 text-right hidden lg:table-cell">hPa</th>
-                  <th className="px-3 py-2 text-center hidden md:table-cell">Antrieb / Status</th>
-                  <th className="px-3 py-2 text-right hidden md:table-cell">nm</th>
+                <tr className="bg-gray-50 dark:bg-gray-800">
+                  <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">{t('dashboard.dateTime')}</th>
+                  <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-sm:hidden">{t('logEntry.sections.position')}</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">{t('dashboard.course')}</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">{t('logEntry.sog')}</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Bft</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Oktas</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-lg:hidden">hPa</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">{t('dashboard.propulsion')}</th>
+                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">nm</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -271,15 +379,15 @@ export function Dashboard() {
                   <tr
                     key={entry.id}
                     onClick={() => navigate(`/log/${entry.id}`)}
-                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-mono text-xs"
                   >
-                    <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">
+                    <td className="px-3 py-2 whitespace-nowrap">
                       {entry.date}<br />{entry.time} <span className="text-gray-400">UTC</span>
                     </td>
-                    <td className="px-3 py-2 font-mono text-xs hidden sm:table-cell whitespace-nowrap">
+                    <td className="px-3 py-2 max-sm:hidden whitespace-nowrap">
                       {formatCoordinate(entry.latitude)}<br />{formatCoordinate(entry.longitude)}
                     </td>
-                    <td className="px-3 py-2 text-right hidden md:table-cell">
+                    <td className="px-3 py-2 text-right max-md:hidden">
                       {entry.courseTrue != null ? `${entry.courseTrue}°` : '—'}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -288,28 +396,28 @@ export function Dashboard() {
                     <td className="px-3 py-2 text-right">
                       <Badge variant="beaufort" beaufortForce={entry.windBeaufort} />
                     </td>
-                    <td className="px-3 py-2 text-right hidden md:table-cell">
+                    <td className="px-3 py-2 text-right max-md:hidden">
                       <OktasBadge value={entry.cloudCoverOktas} />
                     </td>
-                    <td className="px-3 py-2 text-right hidden lg:table-cell font-mono text-xs whitespace-nowrap">
+                    <td className="px-3 py-2 text-right max-lg:hidden whitespace-nowrap">
                       {entry.baroPressureHPa ? (
                         <span>{trendIcon(entry.pressureTrend)} {entry.baroPressureHPa.toFixed(0)}</span>
                       ) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-center hidden md:table-cell">
+                    <td className="px-3 py-2 text-center max-md:hidden">
                       <div className="flex flex-col items-center gap-0.5">
                         {entry.mooringStatus && entry.mooringStatus !== 'underway' ? (
                           <div className="flex items-center gap-1 text-teal-600 dark:text-teal-400">
                             <MooringIcon status={entry.mooringStatus} />
                             <span className="text-[10px] font-semibold leading-none">
-                              {MOORING_LABEL[entry.mooringStatus]}
+                              {t(`logEntry.mooringStatuses.${entry.mooringStatus}`)}
                             </span>
                           </div>
                         ) : (
                           <>
                             {entry.engineOn && (
                               <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 leading-none">
-                                <Zap className="w-2.5 h-2.5" />Motor
+                                <Zap className="w-2.5 h-2.5" />{t('maintenance.categories.engine')}
                               </span>
                             )}
                             {(entry.mainsailState || entry.genoa || entry.staysail || entry.headsail || entry.lightSail) ? (
@@ -330,7 +438,7 @@ export function Dashboard() {
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right hidden md:table-cell">
+                    <td className="px-3 py-2 text-right max-md:hidden">
                       {entry.distanceSinceLastEntry.toFixed(1)}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -343,7 +451,7 @@ export function Dashboard() {
           </div>
           <div className="px-4 md:px-6 py-3 border-t border-gray-100 dark:border-gray-700">
             <Link to="/logbook" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-              Alle Einträge anzeigen <ArrowRight className="w-3 h-3" />
+              {t('dashboard.showAllEntries')} <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
         </Card>

@@ -8,7 +8,7 @@ import { format } from 'date-fns'
 import {
   MapPin, Navigation, Wind, Gauge, Users, FileText,
   ChevronDown, ChevronUp, Copy, Loader2, Save, ArrowLeft, Anchor,
-  Ship, Building2, CircleDot, GitCommitHorizontal,
+  Ship, Building2, CircleDot, GitCommitHorizontal, X,
 } from 'lucide-react'
 import { db } from '../db/database'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -23,6 +23,7 @@ import { OktasPicker } from '../components/ui/OktasPicker'
 import { FileUpload } from '../components/ui/FileUpload'
 import { gpsToCoordinates, haversineDistance, coordToDecimal, decimalToCoord } from '../utils/geo'
 import { useSettings } from '../hooks/useSettings'
+import { useShip } from '../hooks/useShip'
 import { useNMEA, type NMEAData } from '../hooks/useNMEA'
 import { NMEAImportButton } from '../components/ui/NMEAImportPanel'
 import React from 'react'
@@ -46,19 +47,19 @@ const schema = z.object({
   time: z.string().min(1),
   latitude: coordinateSchema,
   longitude: coordinateSchema,
-  courseTrue: optNum(0, 359),
-  courseMagnetic: optNum(0, 359),
+  courseTrue: optNum(0, 360),
+  courseMagnetic: optNum(0, 360),
   speedOverGround: optNum(0, 50),
   speedThroughWater: optNum(0, 50),
   distanceSinceLastEntry: z.number().min(0),
-  windTrueDirection: optNum(0, 359),
+  windTrueDirection: optNum(0, 360),
   windTrueSpeed: z.number().min(0).max(150),
   windBeaufort: z.number().min(0).max(12),
-  windApparentDirection: optNum(0, 359),
+  windApparentDirection: optNum(0, 360),
   windApparentSpeed: optNum(0, 150),
   seaStateBeaufort: z.number().min(0).max(9),
   swellHeightM: z.number().min(0).max(30),
-  swellDirection: optNum(0, 359),
+  swellDirection: optNum(0, 360),
   baroPressureHPa: z.number().min(900).max(1100),
   pressureTrend: z.enum(['rising', 'steady', 'falling', 'rising_rapidly', 'falling_rapidly']),
   visibility: z.enum(['excellent', 'good', 'moderate', 'poor', 'fog']),
@@ -73,14 +74,8 @@ const schema = z.object({
     v => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v))) ? undefined : Number(v),
     z.number().min(0).optional()
   ),
-  fuelLevelL: z.preprocess(
-    v => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v))) ? undefined : Number(v),
-    z.number().min(0).optional()
-  ),
-  waterLevelL: z.preprocess(
-    v => (v === '' || v === null || v === undefined || (typeof v === 'number' && isNaN(v))) ? undefined : Number(v),
-    z.number().min(0).optional()
-  ),
+  fuelLevelL: z.number().min(0).max(100).optional(),
+  waterLevelL: z.number().min(0).max(100).optional(),
   mainsailState: z.enum(['none', 'full', 'reef1', 'reef2', 'reef3', 'reef4']),
   genoa: z.enum(['none', 'full', 'reef1', 'reef2', 'reef3']),
   staysail: z.enum(['none', 'full', 'reef1', 'reef2', 'reef3']),
@@ -269,6 +264,7 @@ export function LogEntryForm() {
   const [resolvedPassageId, setResolvedPassageId] = useState<number | null>(null)
 
   const { settings } = useSettings()
+  const { ship } = useShip()
   const { connected: nmeaConnected, data: nmeaData } = useNMEA(
     settings?.nmeaEnabled ? 'ws://localhost:3001' : undefined
   )
@@ -406,8 +402,8 @@ export function LogEntryForm() {
       temperature: src.temperature,
       engineOn: src.engineOn,
       engineHoursTotal: src.engineHoursTotal,
-      fuelLevelL: src.fuelLevelL,
-      waterLevelL: src.waterLevelL,
+      fuelLevelL: (src.fuelLevelL ?? 0) <= 100 ? src.fuelLevelL : undefined,
+      waterLevelL: (src.waterLevelL ?? 0) <= 100 ? src.waterLevelL : undefined,
       mainsailState: src.mainsailState ?? 'none',
       genoa: src.genoa ?? 'none',
       staysail: src.staysail ?? 'none',
@@ -436,10 +432,10 @@ export function LogEntryForm() {
       }
     }
     if (data.sog !== undefined) setValue('speedOverGround', parseFloat(data.sog.toFixed(1)))
-    if (data.cogTrue !== undefined) setValue('courseTrue', parseFloat(data.cogTrue.toFixed(0)))
-    if (data.windTrueDirection !== undefined) setValue('windTrueDirection', parseFloat(data.windTrueDirection.toFixed(0)))
+    if (data.cogTrue !== undefined) setValue('courseTrue', Math.round(data.cogTrue) % 360)
+    if (data.windTrueDirection !== undefined) setValue('windTrueDirection', Math.round(data.windTrueDirection) % 360)
     if (data.windTrueSpeed !== undefined) setValue('windTrueSpeed', parseFloat(data.windTrueSpeed.toFixed(1)))
-    if (data.windApparentAngle !== undefined) setValue('windApparentDirection', parseFloat(data.windApparentAngle.toFixed(0)))
+    if (data.windApparentAngle !== undefined) setValue('windApparentDirection', Math.round(data.windApparentAngle) % 360)
     if (data.windApparentSpeed !== undefined) setValue('windApparentSpeed', parseFloat(data.windApparentSpeed.toFixed(1)))
     if (data.baroPressureHPa !== undefined) setValue('baroPressureHPa', parseFloat(data.baroPressureHPa.toFixed(0)))
     if (data.temperature !== undefined) setValue('temperature', parseFloat(data.temperature.toFixed(1)))
@@ -624,23 +620,23 @@ export function LogEntryForm() {
         {/* Navigation */}
         <Section title={t('logEntry.sections.navigation')} icon={<Navigation className="w-4 h-4" />}>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={nmLabel(t('logEntry.courseTrue'))} type="number" min={0} max={359} {...register('courseTrue', { valueAsNumber: true })} />
-            <Input label={t('logEntry.courseMagnetic')} type="number" min={0} max={359} {...register('courseMagnetic', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.courseTrue'))} type="text" inputMode="numeric" {...register('courseTrue', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
+            <Input label={t('logEntry.courseMagnetic')} type="text" inputMode="numeric" {...register('courseMagnetic', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={nmLabel(t('logEntry.sog'))} type="number" step={0.1} min={0} {...register('speedOverGround', { valueAsNumber: true })} />
-            <Input label={t('logEntry.stw')} type="number" step={0.1} min={0} {...register('speedThroughWater', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.sog'))} type="text" inputMode="decimal" {...register('speedOverGround', { setValueAs: (v: string) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? undefined : n } })} />
+            <Input label={t('logEntry.stw')} type="text" inputMode="decimal" {...register('speedThroughWater', { setValueAs: (v: string) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? undefined : n } })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('logEntry.distanceSinceLast')} type="number" step={0.1} min={0} {...register('distanceSinceLastEntry', { valueAsNumber: true })} />
+            <Input label={t('logEntry.distanceSinceLast')} type="text" inputMode="decimal" {...register('distanceSinceLastEntry', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
           </div>
         </Section>
 
         {/* Wind & Weather */}
         <Section title={t('logEntry.sections.wind')} icon={<Wind className="w-4 h-4" />}>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={nmLabel(t('logEntry.windTrueDirection'))} type="number" min={0} max={359} {...register('windTrueDirection', { valueAsNumber: true })} />
-            <Input label={nmLabel(t('logEntry.windTrueSpeed'))} type="number" step={0.1} min={0} {...register('windTrueSpeed', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.windTrueDirection'))} type="text" inputMode="numeric" {...register('windTrueDirection', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
+            <Input label={nmLabel(t('logEntry.windTrueSpeed'))} type="text" inputMode="decimal" {...register('windTrueSpeed', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
           </div>
           <BeaufortPicker
             label={t('logEntry.windBeaufort')}
@@ -650,12 +646,12 @@ export function LogEntryForm() {
             readOnly
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input label={nmLabel(t('logEntry.windApparentDir'))} type="number" min={0} max={359} {...register('windApparentDirection', { valueAsNumber: true })} />
-            <Input label={nmLabel(t('logEntry.windApparentSpeed'))} type="number" step={0.1} min={0} {...register('windApparentSpeed', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.windApparentDir'))} type="text" inputMode="numeric" {...register('windApparentDirection', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
+            <Input label={nmLabel(t('logEntry.windApparentSpeed'))} type="text" inputMode="decimal" {...register('windApparentSpeed', { setValueAs: (v: string) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? undefined : n } })} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label={t('logEntry.swellHeight')} type="number" step={0.1} min={0} {...register('swellHeightM', { valueAsNumber: true })} />
-            <Input label={t('logEntry.swellDirection')} type="number" min={0} max={359} {...register('swellDirection', { valueAsNumber: true })} />
+            <Input label={t('logEntry.swellHeight')} type="text" inputMode="decimal" {...register('swellHeightM', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
+            <Input label={t('logEntry.swellDirection')} type="text" inputMode="numeric" {...register('swellDirection', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
           </div>
           <BeaufortPicker
             label={t('logEntry.seaState')}
@@ -666,7 +662,7 @@ export function LogEntryForm() {
             readOnly
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input label={nmLabel(t('logEntry.baroPressure'))} type="number" min={900} max={1100} {...register('baroPressureHPa', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.baroPressure'))} type="text" inputMode="decimal" {...register('baroPressureHPa', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
             <div>
               <p className="label">{t('logEntry.pressureTrend')}</p>
               <div className="mt-1 flex items-center h-9">
@@ -682,7 +678,7 @@ export function LogEntryForm() {
                 <Select label={t('logEntry.visibility')} options={visibilityOptions} value={field.value} onChange={field.onChange} />
               )}
             />
-            <Input label={nmLabel(t('logEntry.temperature'))} type="number" step={0.1} {...register('temperature', { valueAsNumber: true })} />
+            <Input label={nmLabel(t('logEntry.temperature'))} type="text" inputMode="decimal" {...register('temperature', { setValueAs: (v: string) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? undefined : n } })} />
           </div>
           <Controller
             name="cloudCoverOktas"
@@ -795,7 +791,7 @@ export function LogEntryForm() {
               />
               <span className="text-sm font-medium">{t('logEntry.engineOn')}</span>
             </label>
-            <Input label={t('logEntry.engineHoursTotal')} type="number" step={0.1} min={0} {...register('engineHoursTotal', { valueAsNumber: true })} />
+            <Input label={t('logEntry.engineHoursTotal')} type="text" inputMode="decimal" {...register('engineHoursTotal', { setValueAs: (v: string) => { const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? undefined : n } })} />
           </div>
           {/* Mooring status */}
           <div>
@@ -839,10 +835,64 @@ export function LogEntryForm() {
               )}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input label={t('logEntry.fuelLevel')} type="number" min={0} {...register('fuelLevelL', { valueAsNumber: true })} />
-            <Input label={t('logEntry.waterLevel')} type="number" min={0} {...register('waterLevelL', { valueAsNumber: true })} />
-          </div>
+          {/* Fuel & Water level sliders */}
+          {[
+            { name: 'fuelLevelL' as const, label: t('logEntry.fuelLevel'), capacity: ship?.fuelCapacityL },
+            { name: 'waterLevelL' as const, label: t('logEntry.waterLevel'), capacity: ship?.waterCapacityL },
+          ].map(({ name, label, capacity }) => (
+            <Controller
+              key={name}
+              name={name}
+              control={control}
+              render={({ field }) => (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label mb-0">{label}</label>
+                    <div className="flex items-center gap-1.5">
+                      {field.value !== undefined ? (
+                        <>
+                          <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 tabular-nums">
+                            {field.value}%
+                            {capacity ? ` · ≈${Math.round(field.value * capacity / 100)} L` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange(undefined)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-0.5 rounded"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => field.onChange(50)}
+                          className="text-xs text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-0.5 rounded border border-dashed border-gray-300 dark:border-gray-600 transition-colors"
+                        >
+                          + erfassen
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {field.value !== undefined && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 font-medium w-3">E</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={field.value}
+                        onChange={e => field.onChange(Number(e.target.value))}
+                        className="flex-1 accent-blue-600 h-2 cursor-pointer"
+                      />
+                      <span className="text-[10px] text-gray-400 font-medium w-3">F</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            />
+          ))}
         </Section>
 
         {/* Crew */}

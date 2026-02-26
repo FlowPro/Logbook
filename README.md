@@ -10,13 +10,16 @@ Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Da
 
 - **Logeinträge** — Position, Kurs, Geschwindigkeit, Wind (Beaufort), Seegang, Barometer, Segelkonfiguration, Motor, Besatzung, Notizen
 - **Passagen** — Port-to-Port-Verwaltung mit automatischer Datumssynchronisation aus Logeinträgen; Sperren nach Abschluss; PDF-Export je Passage
-- **Wartung** — Kanban-Board (Geplant / In Arbeit / Erledigt) mit Drag & Drop, Prioritäten, Fälligkeiten, Kostentracking
+- **Wartung** — Kanban-Board (Geplant / In Arbeit / Erledigt) mit Drag & Drop, Prioritäten, Fälligkeiten, Checklisten je Aufgabe, wiederkehrende Aufgaben (täglich/wöchentlich/monatlich/jährlich/Motorstunden)
 - **Besatzung** — Crewliste mit Qualifikationen, Passdaten, Bordzeiten
 - **Statistiken** — Gesegelte Meilen, Windverteilung, Mooringstatus, Saisonübersicht
 - **Suche** — Volltextsuche über alle Einträge mit Such-Operatoren (`port:`, `bft:`, `date:`, `crew:`)
-- **PDF-Export** — Logbuch (A4 Querformat), Schiffsdossier, Besatzungsliste, Zollerklärung
+- **PDF-Export** — Logbuch (A4 Querformat) inkl. Wachbesatzung, Schiffsdossier, Besatzungsliste, Zollerklärung, Crew-Einweisungsprotokoll mit Unterschriftenzeilen
 - **NMEA-Bridge** — Optionaler Node.js-Server liest NMEA 0183-Daten vom Bordsystem (TCP/UDP) und überträgt sie per WebSocket an den Browser
 - **Backup** — Automatisches tägliches Backup als ZIP-Datei; manueller Export/Import
+- **Hafen-Autocomplete** — Hafennamen aus bestehenden Passagen vorschlagen inkl. automatischer Länderübernahme
+- **Dashboard-Alerts** — Fällige Wartungsaufgaben (nächste 14 Tage) direkt auf der Startseite sichtbar
+- **Sicherheits-Checklisten** — Vor-Ablege, Vor-Anker, Notfall, Hafeneinlauf, Crew-Einweisung (mit localStorage-Persistenz)
 - **Mehrsprachig** — Deutsch / Englisch
 - **Dark Mode** — Systemeinstellung oder manuell
 

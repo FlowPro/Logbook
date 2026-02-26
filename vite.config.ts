@@ -126,6 +126,10 @@ export default defineConfig({
       }
     })
   ],
+  server: {
+    port: 5173,
+    strictPort: true, // fail instead of silently switching ports (prevents IndexedDB origin mismatch)
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

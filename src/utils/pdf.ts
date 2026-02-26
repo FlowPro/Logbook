@@ -30,7 +30,7 @@ function addFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   doc.setFontSize(8)
   doc.setTextColor(128, 128, 128)
   doc.text(`Page ${pageNum} / ${totalPages}`, PAGE_W / 2, PAGE_H - 8, { align: 'center' })
-  doc.text("Ship's Log – Logbuch Maritime", MARGIN, PAGE_H - 8)
+  doc.text("Ship's Log – Maritime Logbook", MARGIN, PAGE_H - 8)
   doc.text(format(new Date(), 'yyyy-MM-dd'), PAGE_W - MARGIN, PAGE_H - 8, { align: 'right' })
   doc.setTextColor(0, 0, 0)
 }
@@ -61,14 +61,21 @@ async function embedImage(
   x: number, y: number, w: number, h: number
 ): Promise<void> {
   const mime = dataUrl.match(/^data:([^;]+);/)?.[1] || 'image/jpeg'
-  const fmt = mimeToFormat(mime)
-  const base64 = extractBase64(dataUrl)
 
-  try {
-    doc.addImage(base64, fmt, x, y, w, h)
-    return
-  } catch {
-    // Direct embedding failed — try canvas-based conversion
+  // Always use canvas for JPEG so EXIF orientation is applied by the browser
+  // before we render to the PDF (direct addImage ignores EXIF rotation).
+  // For other formats we still try direct embedding first and fall back to canvas.
+  const forceCanvas = mime === 'image/jpeg' || mime === 'image/jpg'
+
+  if (!forceCanvas) {
+    const fmt = mimeToFormat(mime)
+    const base64 = extractBase64(dataUrl)
+    try {
+      doc.addImage(base64, fmt, x, y, w, h)
+      return
+    } catch {
+      // Direct embedding failed — fall through to canvas
+    }
   }
 
   await new Promise<void>((resolve, reject) => {
@@ -224,10 +231,10 @@ async function appendAttachmentPages(
 }
 
 const MOORING_PDF: Record<string, string> = {
-  anchored: 'Anker',
-  moored_marina: 'Hafen',
-  moored_buoy: 'Boje',
-  moored_alongside: 'Längsseits',
+  anchored: 'At Anchor',
+  moored_marina: 'Marina',
+  moored_buoy: 'Buoy',
+  moored_alongside: 'Alongside',
 }
 
 function sailSummary(e: LogEntry): string {
@@ -264,7 +271,7 @@ export async function generateLogbookPDF(
   const PAGE_H_L = 210 // landscape height
   const shipName = ship?.name ?? 'Unknown Vessel'
 
-  addHeader(doc, "SHIP'S LOG / LOGBUCH", shipName)
+  addHeader(doc, "SHIP'S LOG", shipName)
 
   // Ship identity sub-header
   let startY = 26
@@ -334,7 +341,7 @@ export async function generateLogbookPDF(
         headerY = prevFinalY + 8
         if (headerY > PAGE_H_L - 40) {
           doc.addPage()
-          addHeader(doc, "SHIP'S LOG / LOGBUCH (cont.)", shipName)
+          addHeader(doc, "SHIP'S LOG (cont.)", shipName)
           headerY = 28
         }
       }
@@ -370,7 +377,7 @@ export async function generateLogbookPDF(
       let headerY = prevFinalY + 8
       if (headerY > PAGE_H_L - 40) {
         doc.addPage()
-        addHeader(doc, "SHIP'S LOG / LOGBUCH (cont.)", shipName)
+        addHeader(doc, "SHIP'S LOG (cont.)", shipName)
         headerY = 28
       }
       doc.setFontSize(8.5)
@@ -559,9 +566,13 @@ export async function generatePassagePDF(
   y = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y) + 5
 
   // ── Log table ─────────────────────────────────────────────────────────────
-  const columns = ['Date/Time', 'Position', 'COG/CMG', 'SOG/STW', 'Dist.', 'Wind', 'Baro', 'Sails', 'Engine', 'Notes']
+  const columns = ['Date/Time', 'Position', 'COG/CMG', 'SOG/STW', 'Dist.', 'Wind', 'Baro', 'Sails', 'Engine', 'Watch', 'Notes']
 
   function entryRow(e: LogEntry) {
+    const watchParts = [
+      ...(e.watchOfficer ? [e.watchOfficer] : []),
+      ...(e.crewOnWatch ?? []).filter(c => c !== e.watchOfficer),
+    ]
     return [
       `${e.date}\n${e.time} UTC`,
       `${formatCoordinate(e.latitude)}\n${formatCoordinate(e.longitude)}`,
@@ -574,6 +585,7 @@ export async function generatePassagePDF(
       e.mooringStatus && e.mooringStatus !== 'underway'
         ? MOORING_PDF[e.mooringStatus] + (e.engineOn ? '\nMotor' : '')
         : e.engineOn ? `On${e.engineHoursTotal != null ? `\n${e.engineHoursTotal.toFixed(0)} h` : ''}` : 'Sailing',
+      watchParts.length > 0 ? watchParts.join('\n') : '—',
       e.notes,
     ]
   }
@@ -585,7 +597,7 @@ export async function generatePassagePDF(
     styles: { fontSize: 7, cellPadding: 2, lineWidth: 0.1, lineColor: [200, 200, 200] as [number, number, number] },
     headStyles: { fillColor: [220, 220, 220] as [number, number, number], textColor: [30, 30, 30] as [number, number, number], fontStyle: 'bold' as const, fontSize: 7 },
     alternateRowStyles: { fillColor: [248, 250, 252] as [number, number, number] },
-    columnStyles: { 9: { cellWidth: 45 } },
+    columnStyles: { 9: { cellWidth: 26 }, 10: { cellWidth: 38 } },
     margin: { top: 25, left: MARGIN, right: MARGIN },
     didDrawPage: (data: { pageNumber: number }) => {
       if (data.pageNumber > 1) addHeader(doc, `PASSAGE REPORT · ${title} (cont.)`, shipName)
@@ -601,7 +613,7 @@ export async function generatePassagePDF(
 export async function generateShipDossierPDF(ship: Ship, includeAttachments = true): Promise<void> {
   const doc = new jsPDF({ format: 'a4' })
 
-  addHeader(doc, 'SHIP DOSSIER / SCHIFFSAKTE', ship.name)
+  addHeader(doc, 'SHIP DOSSIER', ship.name)
 
   let y = 30
 
@@ -624,42 +636,42 @@ export async function generateShipDossierPDF(ship: Ship, includeAttachments = tr
     y += 6
   }
 
-  section('VESSEL IDENTITY / SCHIFFSIDENTITÄT')
+  section('VESSEL IDENTITY')
   row('Name', ship.name)
-  row('Type / Typ', ship.type)
-  row('Manufacturer / Hersteller', `${ship.manufacturer} ${ship.model}`)
-  row('Year Built / Baujahr', String(ship.yearBuilt || '-'))
-  row('Flag / Flagge', ship.flag)
-  row('Home Port / Heimathafen', ship.homePort)
+  row('Type', ship.type)
+  row('Manufacturer', `${ship.manufacturer} ${ship.model}`)
+  row('Year Built', String(ship.yearBuilt || '-'))
+  row('Flag', ship.flag)
+  row('Home Port', ship.homePort)
   y += 3
 
-  section('REGISTRATION / REGISTRIERUNG')
-  row('Reg. Number / Registriernummer', ship.registrationNumber)
-  row('Country / Registrierland', ship.registrationCountry)
+  section('REGISTRATION')
+  row('Reg. Number', ship.registrationNumber)
+  row('Country', ship.registrationCountry)
   row('MMSI', ship.mmsi)
-  row('Call Sign / Rufzeichen', ship.callSign)
+  row('Call Sign', ship.callSign)
   row('IMO', ship.imoNumber)
   y += 3
 
-  section('DIMENSIONS / ABMESSUNGEN')
+  section('DIMENSIONS')
   row('LOA', `${ship.loaMeters} m`)
-  row('Beam / Breite', `${ship.beamMeters} m`)
-  row('Draft / Tiefgang', `${ship.draftMeters} m`)
-  row('Displacement / Verdrängung', `${ship.displacementTons} t`)
-  row('Sail Area / Segelfläche', `${ship.sailAreaSqm} m²`)
+  row('Beam', `${ship.beamMeters} m`)
+  row('Draft', `${ship.draftMeters} m`)
+  row('Displacement', `${ship.displacementTons} t`)
+  row('Sail Area', `${ship.sailAreaSqm} m²`)
   y += 3
 
-  section('ENGINE & TANKS / MOTOR & TANKS')
-  row('Engine Type / Motortyp', ship.engineType)
-  row('Power / Leistung', `${ship.enginePowerKw} kW`)
-  row('Fuel / Kraftstoff', `${ship.fuelType}, ${ship.fuelCapacityL} L`)
-  row('Water / Wasser', `${ship.waterCapacityL} L`)
+  section('ENGINE & TANKS')
+  row('Engine Type', ship.engineType)
+  row('Power', `${ship.enginePowerKw} kW`)
+  row('Fuel', `${ship.fuelType}, ${ship.fuelCapacityL} L`)
+  row('Water', `${ship.waterCapacityL} L`)
   y += 3
 
-  section('INSURANCE / VERSICHERUNG')
-  row('Company / Gesellschaft', ship.insuranceCompany)
-  row('Policy Nr. / Polizzennr.', ship.insurancePolicyNr)
-  row('Expiry / Gültig bis', ship.insuranceExpiry)
+  section('INSURANCE')
+  row('Company', ship.insuranceCompany)
+  row('Policy Nr.', ship.insurancePolicyNr)
+  row('Expiry', ship.insuranceExpiry)
 
   addFooter(doc, 1, 1)
 
@@ -681,12 +693,12 @@ export async function generateCrewListPDF(
   const doc = new jsPDF({ format: 'a4' })
   const shipName = ship?.name ?? 'Unknown Vessel'
 
-  addHeader(doc, 'CREW LIST / CREWLISTE', shipName)
+  addHeader(doc, 'CREW LIST', shipName)
 
   doc.setFontSize(9)
-  doc.text(`Vessel / Schiff: ${shipName}`, MARGIN, 28)
+  doc.text(`Vessel: ${shipName}`, MARGIN, 28)
   if (ship?.mmsi) doc.text(`MMSI: ${ship.mmsi}`, PAGE_W / 2, 28)
-  doc.text(`Date / Datum: ${format(new Date(), 'yyyy-MM-dd')}`, PAGE_W - MARGIN, 28, { align: 'right' })
+  doc.text(`Date: ${format(new Date(), 'yyyy-MM-dd')}`, PAGE_W - MARGIN, 28, { align: 'right' })
 
   const tableData = crew.map((m, i) => [
     String(i + 1),
@@ -701,7 +713,7 @@ export async function generateCrewListPDF(
   ])
 
   autoTable(doc, {
-    head: [['#', 'Name', 'Date of Birth\nGeburtsdatum', 'Nationality\nNationalität', 'Passport Nr.\nPassnummer', 'Expiry\nAblauf', 'Role\nRolle', 'On Board\nAn Bord', 'Until\nBis']],
+    head: [['#', 'Name', 'Date of Birth', 'Nationality', 'Passport Nr.', 'Expiry', 'Role', 'On Board', 'Until']],
     body: tableData,
     startY: 35,
     styles: { fontSize: 8, cellPadding: 3 },
@@ -713,10 +725,10 @@ export async function generateCrewListPDF(
   const finalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 200
   doc.setFontSize(9)
   doc.setFont('helvetica', 'bold')
-  doc.text('Skipper Signature / Unterschrift:', MARGIN, finalY + 20)
+  doc.text('Skipper Signature:', MARGIN, finalY + 20)
   doc.line(MARGIN, finalY + 35, 100, finalY + 35)
   doc.setFont('helvetica', 'normal')
-  doc.text('Date / Datum: _______________', MARGIN + 110, finalY + 35)
+  doc.text('Date: _______________', MARGIN + 110, finalY + 35)
 
   addFooter(doc, 1, 1)
 
@@ -761,7 +773,7 @@ export async function generateCustomsDeclarationPDF(
 ): Promise<void> {
   const doc = new jsPDF({ format: 'a4' })
 
-  addHeader(doc, 'CUSTOMS DECLARATION / EINKLARIERUNG', ship.name)
+  addHeader(doc, 'CUSTOMS DECLARATION', ship.name)
 
   let y = 35
 
@@ -786,32 +798,32 @@ export async function generateCustomsDeclarationPDF(
     if (!x) y += 12
   }
 
-  sectionTitle('VESSEL DETAILS / SCHIFFSDATEN')
-  field('Vessel Name / Name des Schiffes', ship.name, MARGIN)
-  field('Type / Typ', ship.type, PAGE_W / 2)
+  sectionTitle('VESSEL DETAILS')
+  field('Vessel Name', ship.name, MARGIN)
+  field('Type', ship.type, PAGE_W / 2)
   y += 12
-  field('Flag / Flagge', ship.flag, MARGIN)
+  field('Flag', ship.flag, MARGIN)
   field('MMSI', ship.mmsi, PAGE_W / 2)
   y += 12
-  field('Call Sign / Rufzeichen', ship.callSign, MARGIN)
-  field('Reg. No. / Registriernummer', ship.registrationNumber, PAGE_W / 2)
+  field('Call Sign', ship.callSign, MARGIN)
+  field('Reg. No.', ship.registrationNumber, PAGE_W / 2)
   y += 15
 
-  sectionTitle('VOYAGE DETAILS / REISEDATEN')
+  sectionTitle('VOYAGE DETAILS')
   if (passage) {
-    field('Port of Departure / Abfahrtshafen', `${passage.departurePort}, ${passage.departureCountry}`)
-    field('Date / Datum', passage.departureDate)
-    field('Port of Arrival / Ankunftshafen', `${passage.arrivalPort}, ${passage.arrivalCountry}`)
-    field('Date / Datum', passage.arrivalDate)
+    field('Port of Departure', `${passage.departurePort}, ${passage.departureCountry}`)
+    field('Date', passage.departureDate)
+    field('Port of Arrival', `${passage.arrivalPort}, ${passage.arrivalCountry}`)
+    field('Date', passage.arrivalDate)
   } else {
-    field('Port of Departure / Abfahrtshafen', '')
-    field('Departure Date / Abfahrtsdatum', '')
-    field('Port of Arrival / Ankunftshafen', '')
-    field('Arrival Date / Ankunftsdatum', '')
+    field('Port of Departure', '')
+    field('Departure Date', '')
+    field('Port of Arrival', '')
+    field('Arrival Date', '')
   }
   y += 5
 
-  sectionTitle('CREW MANIFEST / CREWLISTE')
+  sectionTitle('CREW MANIFEST')
   autoTable(doc, {
     head: [['#', 'Name', 'Date of Birth', 'Nationality', 'Passport Nr.', 'Role']],
     body: crew.map((m, i) => [
@@ -834,12 +846,12 @@ export async function generateCustomsDeclarationPDF(
   doc.setFontSize(8)
   doc.setFont('helvetica', 'italic')
   doc.text(
-    'I hereby declare that all information provided is correct. / Ich erkläre hiermit, dass alle Angaben korrekt sind.',
+    'I hereby declare that all information provided is correct and complete.',
     MARGIN, finalY + 15, { maxWidth: PAGE_W - MARGIN * 2 }
   )
   doc.setFont('helvetica', 'normal')
-  doc.text('Date / Datum: _______________', MARGIN, finalY + 30)
-  doc.text('Skipper Signature / Unterschrift: ___________________________', MARGIN + 70, finalY + 30)
+  doc.text('Date: _______________', MARGIN, finalY + 30)
+  doc.text('Skipper Signature: ___________________________', MARGIN + 70, finalY + 30)
 
   addFooter(doc, 1, 1)
 

@@ -110,7 +110,7 @@ export function Settings() {
       setProcessRunning(false)
       return
     }
-    const apiBase = getApiBase('ws://localhost:3001')
+    const apiBase = getApiBase(settings.nmeaBridgeUrl || 'ws://localhost:3001')
 
     async function poll() {
       // 1. Check if the Vite bridge-control plugin is available
@@ -148,7 +148,7 @@ export function Settings() {
       clearInterval(id)
       nmeaFormLoaded.current = false
     }
-  }, [settings?.nmeaEnabled])
+  }, [settings?.nmeaEnabled, settings?.nmeaBridgeUrl])
 
   async function checkForUpdate() {
     if (!isTauri) return
@@ -196,7 +196,7 @@ export function Settings() {
 
   async function handlePickBackupDir() {
     if (!('showDirectoryPicker' in window)) {
-      alert('Your browser does not support folder selection.\nBitte Chrome oder Edge verwenden.')
+      alert(t('settings.backupFolderHint'))
       return
     }
     try {
@@ -249,9 +249,9 @@ export function Settings() {
         jsonText = await file.text()
       }
       await importAllData(jsonText)
-      toast.success('Daten erfolgreich wiederhergestellt!')
+      toast.success(t('settings.restoreSuccess'))
     } catch {
-      toast.error('Fehler beim Wiederherstellen der Daten.')
+      toast.error(t('settings.restoreError'))
     }
   }
 
@@ -260,14 +260,14 @@ export function Settings() {
     setClearing(true)
     try {
       await clearLogData()
-      toast.success('Alle Logdaten gelöscht.')
+      toast.success(t('settings.clearSuccess'))
     } finally {
       setClearing(false)
     }
   }
 
   async function handleNmeaSave() {
-    const apiBase = getApiBase('ws://localhost:3001')
+    const apiBase = getApiBase(settings?.nmeaBridgeUrl || 'ws://localhost:3001')
     setNmeaSaving(true)
     setNmeaSaveError('')
     try {
@@ -276,23 +276,33 @@ export function Settings() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nmeaForm),
       })
-      if (!res.ok) throw new Error('Server-Fehler')
+      if (!res.ok) throw new Error('server error')
       nmeaFormLoaded.current = false
     } catch {
-      setNmeaSaveError('Konnte nicht gespeichert werden — Bridge-Server nicht erreichbar.')
+      setNmeaSaveError(t('settings.nmeaSaveError'))
     } finally {
       setNmeaSaving(false)
     }
   }
 
   async function handleNmeaConnect() {
-    const apiBase = getApiBase('ws://localhost:3001')
+    const apiBase = getApiBase(settings?.nmeaBridgeUrl || 'ws://localhost:3001')
     await fetch(`${apiBase}/api/connect`, { method: 'POST' })
   }
 
   async function handleNmeaDisconnect() {
-    const apiBase = getApiBase('ws://localhost:3001')
+    const apiBase = getApiBase(settings?.nmeaBridgeUrl || 'ws://localhost:3001')
     await fetch(`${apiBase}/api/disconnect`, { method: 'POST' })
+  }
+
+  async function handleNmeaReconnect() {
+    const apiBase = getApiBase(settings?.nmeaBridgeUrl || 'ws://localhost:3001')
+    await fetch(`${apiBase}/api/disconnect`, { method: 'POST' }).catch(() => {})
+    await fetch(`${apiBase}/api/connect`, { method: 'POST' }).catch(() => {})
+  }
+
+  async function handleBridgeStart() {
+    await fetch('/api/bridge-control/start', { method: 'POST' }).catch(() => {})
   }
 
   if (!settings) {
@@ -317,7 +327,8 @@ export function Settings() {
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              {lang === 'de' ? '🇩🇪 Deutsch' : '🇬🇧 English'}
+              <span className={`fi fi-${lang === 'de' ? 'de' : 'gb'} mr-2`} />
+              {lang === 'de' ? 'Deutsch' : 'English'}
             </button>
           ))}
         </div>
@@ -427,8 +438,8 @@ export function Settings() {
               </div>
               <p className="text-sm text-gray-500">
                 {processControlAvailable
-                  ? 'Aktiviert NMEA-0183-Datenimport und startet den Bridge-Server'
-                  : 'Importiert GPS, Wind und Wetterdaten (NMEA 0183) aus dem Bordnetz'}
+                  ? t('settings.nmeaDescProcess')
+                  : t('settings.nmeaDesc')}
               </p>
             </div>
             <button
@@ -451,18 +462,22 @@ export function Settings() {
             <>
               {/* Server status box */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Bridge-Server</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('settings.bridgeServer')}</p>
 
                 {/* Bridge connection status */}
                 {bridgeStatus === null ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0" />
-                      Bridge nicht erreichbar
+                      {t('settings.bridgeNotReachable')}
                     </div>
-                    {!processControlAvailable && (
+                    {processControlAvailable ? (
+                      <Button type="button" size="sm" variant="primary" onClick={handleBridgeStart}>
+                        {t('nmea.startBridge')}
+                      </Button>
+                    ) : (
                       <div className="space-y-1">
-                        <p className="text-xs text-gray-400">Starte den Bridge-Server:</p>
+                        <p className="text-xs text-gray-400">{t('settings.startBridge')}</p>
                         <code className="block text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">npm run server</code>
                         <code className="block text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">npm run dev:nmea</code>
                       </div>
@@ -472,17 +487,17 @@ export function Settings() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                       <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                      Bridge aktiv · {bridgeStatus.wsClients} {bridgeStatus.wsClients === 1 ? 'Client' : 'Clients'}
+                      {t('settings.bridgeActive')} · {bridgeStatus.wsClients} {bridgeStatus.wsClients === 1 ? 'Client' : 'Clients'}
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <NMEAStatusIndicator connected={stableNmeaConnected} />
                       {stableNmeaConnected ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={handleNmeaDisconnect}>
-                          Trennen
+                        <Button type="button" size="sm" variant="secondary" onClick={handleNmeaReconnect}>
+                          {t('nmea.reconnect')}
                         </Button>
                       ) : (
                         <Button type="button" size="sm" variant="primary" onClick={handleNmeaConnect}>
-                          Verbinden
+                          {t('common.connect')}
                         </Button>
                       )}
                     </div>
@@ -492,7 +507,7 @@ export function Settings() {
 
               {/* NMEA device config */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">NMEA-Gerät</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('settings.nmeaDevice')}</p>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
                     label="Host"
@@ -508,7 +523,7 @@ export function Settings() {
                   />
                 </div>
                 <Select
-                  label="Protokoll"
+                  label={t('settings.protocol')}
                   options={[
                     { value: 'tcp', label: 'TCP' },
                     { value: 'udp', label: 'UDP' },
@@ -525,7 +540,7 @@ export function Settings() {
                     loading={nmeaSaving}
                     onClick={handleNmeaSave}
                   >
-                    Speichern & Verbinden
+                    {t('settings.saveConnect')}
                   </Button>
                   {nmeaSaveError && (
                     <p className="text-xs text-red-500 mt-1.5">{nmeaSaveError}</p>
@@ -535,7 +550,7 @@ export function Settings() {
 
               {/* Debug panel – always visible when NMEA enabled */}
               <div className="mt-2">
-                <NMEADebugPanel wsUrl="ws://localhost:3001" />
+                <NMEADebugPanel wsUrl={settings.nmeaBridgeUrl || 'ws://localhost:3001'} />
               </div>
             </>
           )}
@@ -558,16 +573,19 @@ export function Settings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t('settings.autoBackup')}</p>
-              <p className="text-sm text-gray-500">Tägliche automatische Sicherung</p>
+              <p className="text-sm text-gray-500">{t('settings.dailyBackup')}</p>
               {settings.autoBackup && (
                 <div className="mt-1 space-y-0.5">
                   {settings.lastBackupDate ? (
                     <p className="text-xs text-gray-400 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      Letztes Backup: {new Date(settings.lastBackupDate).toLocaleDateString('de-DE')} um {new Date(settings.lastBackupDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                      {t('settings.lastBackupTime', {
+                        date: new Date(settings.lastBackupDate).toLocaleDateString(),
+                        time: new Date(settings.lastBackupDate).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+                      })}
                     </p>
                   ) : (
-                    <p className="text-xs text-gray-400">Noch kein automatisches Backup erstellt</p>
+                    <p className="text-xs text-gray-400">{t('settings.noBackupYet')}</p>
                   )}
                   {settings.lastBackupDate && (() => {
                     const next = new Date(settings.lastBackupDate)
@@ -575,7 +593,7 @@ export function Settings() {
                     return (
                       <p className="text-xs text-blue-500 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        Nächstes Backup: {next.toLocaleDateString('de-DE')} (beim App-Start)
+                        {t('settings.nextBackupDate', { date: next.toLocaleDateString() })}
                       </p>
                     )
                   })()}
@@ -598,7 +616,7 @@ export function Settings() {
 
           {/* Backup directory picker */}
           <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-            <p className="text-sm font-medium mb-1">Backup-Ordner / Backup Folder</p>
+            <p className="text-sm font-medium mb-1">{t('settings.backupFolder')}</p>
             {backupDirLabel ? (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 min-w-0">
@@ -608,28 +626,28 @@ export function Settings() {
                 <button
                   onClick={handleClearBackupDir}
                   className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 flex-shrink-0"
-                  title="Ordner entfernen"
+                  title={t('settings.removeFolder')}
                 >
                   <FolderX className="w-3.5 h-3.5" />
-                  Entfernen
+                  {t('settings.removeFolder')}
                 </button>
               </div>
             ) : (
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-gray-400 italic">Kein Ordner ausgewählt — Standard Downloads</p>
+                <p className="text-sm text-gray-400 italic">{t('settings.noFolderSelected')}</p>
                 <Button size="sm" variant="secondary" icon={<FolderOpen className="w-4 h-4" />} onClick={handlePickBackupDir}>
-                  Wählen
+                  {t('settings.chooseFolder')}
                 </Button>
               </div>
             )}
             <p className="text-xs text-gray-400 mt-2">
-              Speichert Backups direkt in den gewählten Ordner (z.B. USB-Stick). Erfordert Chrome oder Edge.
+              {t('settings.backupFolderHint')}
             </p>
           </div>
 
           {/* Manual backup & restore */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Manuelles Backup</p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('settings.manualBackup')}</p>
             <div className="flex items-start justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
               <div className="min-w-0">
                 <p className="font-medium text-sm">{t('export.backupData')}</p>
@@ -667,36 +685,6 @@ export function Settings() {
         )}
       </Card>
 
-      {/* Danger zone */}
-      <Card>
-        <button type="button" onClick={() => toggleSection('danger')} className="w-full flex items-center justify-between gap-2 text-left">
-          <div className="flex items-center gap-2 font-semibold text-red-600 dark:text-red-400">
-            <AlertTriangle className="w-4 h-4" />
-            {t('settings.dangerZone')}
-          </div>
-          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('danger') ? 'rotate-180' : ''}`} />
-        </button>
-        {openSections.has('danger') && (
-        <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-          <h4 className="font-semibold text-sm text-red-700 dark:text-red-400 mb-1">Logbuch zurücksetzen</h4>
-          <p className="text-sm text-red-600 dark:text-red-500 mb-3">
-            Löscht alle {entriesCount} Logeinträge und {passagesCount} Passagen unwiderruflich.
-            Schiffsdaten, Crew und Einstellungen bleiben erhalten.
-          </p>
-          <Button
-            variant="danger"
-            size="sm"
-            icon={<Trash2 className="w-4 h-4" />}
-            onClick={() => setShowClearConfirm(true)}
-            loading={clearing}
-            disabled={entriesCount === 0 && passagesCount === 0}
-          >
-            Alle Logdaten löschen
-          </Button>
-        </div>
-        )}
-      </Card>
-
       {/* About */}
       <Card>
         <button type="button" onClick={() => toggleSection('about')} className="w-full flex items-center justify-between gap-2 text-left">
@@ -715,11 +703,11 @@ export function Settings() {
               <span className="font-mono">1.0.8</span>
             </div>
             <div className="flex justify-between">
-              <span>Datenspeicherung</span>
-              <span>IndexedDB (lokal)</span>
+              <span>{t('settings.dataStorage')}</span>
+              <span>IndexedDB (local)</span>
             </div>
             <div className="flex justify-between">
-              <span>Offline-fähig</span>
+              <span>{t('settings.offlineCapable')}</span>
               <span className="text-green-600">✓ PWA</span>
             </div>
           </div>
@@ -727,7 +715,7 @@ export function Settings() {
           {/* Update section — Tauri only */}
           {isTauri && (
             <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">App-Update</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{t('settings.appUpdate')}</p>
               <div className="flex items-center gap-3">
                 <Button
                   size="sm"
@@ -736,22 +724,22 @@ export function Settings() {
                   onClick={checkForUpdate}
                   disabled={updateState === 'checking' || updateState === 'downloading'}
                 >
-                  {updateState === 'checking' ? 'Prüfe...'
-                    : updateState === 'downloading' ? `Lade herunter… ${updateProgress > 0 ? updateProgress + '%' : ''}`
-                    : 'Nach Updates suchen'}
+                  {updateState === 'checking' ? t('settings.checking')
+                    : updateState === 'downloading' ? t('settings.downloading', { progress: updateProgress > 0 ? updateProgress + '%' : '' })
+                    : t('settings.checkForUpdates')}
                 </Button>
                 {updateState === 'up-to-date' && (
                   <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="w-4 h-4" /> Aktuell
+                    <CheckCircle className="w-4 h-4" /> {t('settings.upToDate')}
                   </span>
                 )}
                 {updateState === 'available' && updateVersion && (
                   <span className="text-sm text-blue-600 dark:text-blue-400">
-                    Version {updateVersion} verfügbar
+                    {t('settings.updateAvailable', { version: updateVersion })}
                   </span>
                 )}
                 {updateState === 'error' && (
-                  <span className="text-sm text-red-500">Fehler beim Prüfen</span>
+                  <span className="text-sm text-red-500">{t('settings.updateError')}</span>
                 )}
               </div>
             </div>
@@ -766,9 +754,38 @@ export function Settings() {
               className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              Alle Versionen auf GitHub
+              {t('settings.allVersions')}
             </a>
           </div>
+        </div>
+        )}
+      </Card>
+
+      {/* Danger zone */}
+      <Card>
+        <button type="button" onClick={() => toggleSection('danger')} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 font-semibold text-red-600 dark:text-red-400">
+            <AlertTriangle className="w-4 h-4" />
+            {t('settings.dangerZone')}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('danger') ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.has('danger') && (
+        <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+          <h4 className="font-semibold text-sm text-red-700 dark:text-red-400 mb-1">{t('settings.resetLogbook')}</h4>
+          <p className="text-sm text-red-600 dark:text-red-500 mb-3">
+            {t('settings.resetDesc', { entries: entriesCount, passages: passagesCount })}
+          </p>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={<Trash2 className="w-4 h-4" />}
+            onClick={() => setShowClearConfirm(true)}
+            loading={clearing}
+            disabled={entriesCount === 0 && passagesCount === 0}
+          >
+            {t('settings.deleteAllData')}
+          </Button>
         </div>
         )}
       </Card>
@@ -777,21 +794,21 @@ export function Settings() {
       <Modal
         isOpen={restorePendingFile !== null}
         onClose={() => setRestorePendingFile(null)}
-        title="Backup wiederherstellen"
+        title={t('settings.restoreBackupTitle')}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setRestorePendingFile(null)}>Abbrechen</Button>
-            <Button variant="danger" size="sm" onClick={executeRestore}>Jetzt wiederherstellen</Button>
+            <Button variant="secondary" size="sm" onClick={() => setRestorePendingFile(null)}>{t('common.cancel')}</Button>
+            <Button variant="danger" size="sm" onClick={executeRestore}>{t('settings.restoreNow')}</Button>
           </>
         }
       >
         <div className="flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Alle vorhandenen Daten werden überschrieben!</p>
-            <p className="text-sm text-gray-500 mt-1">Datei: <span className="font-mono">{restorePendingFile?.name}</span></p>
-            <p className="text-sm text-gray-500 mt-1">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{t('settings.restoreWarning')}</p>
+            <p className="text-sm text-gray-500 mt-1">{t('common.name')}: <span className="font-mono">{restorePendingFile?.name}</span></p>
+            <p className="text-sm text-gray-500 mt-1">{t('settings.irreversibleNote')}</p>
           </div>
         </div>
       </Modal>
@@ -800,12 +817,12 @@ export function Settings() {
       <Modal
         isOpen={showClearConfirm}
         onClose={() => setShowClearConfirm(false)}
-        title="Logbuch zurücksetzen"
+        title={t('settings.resetLogbook')}
         size="sm"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setShowClearConfirm(false)}>Abbrechen</Button>
-            <Button variant="danger" size="sm" onClick={executeClearLogData}>Unwiderruflich löschen</Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowClearConfirm(false)}>{t('common.cancel')}</Button>
+            <Button variant="danger" size="sm" onClick={executeClearLogData}>{t('settings.deleteIrreversibly')}</Button>
           </>
         }
       >
@@ -813,9 +830,9 @@ export function Settings() {
           <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-              Alle {entriesCount} Logeinträge und {passagesCount} Passagen werden gelöscht.
+              {t('settings.resetConfirmText', { entries: entriesCount, passages: passagesCount })}
             </p>
-            <p className="text-sm text-gray-500 mt-1">Diese Aktion kann NICHT rückgängig gemacht werden.</p>
+            <p className="text-sm text-gray-500 mt-1">{t('settings.irreversibleCaps')}</p>
           </div>
         </div>
       </Modal>

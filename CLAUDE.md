@@ -105,6 +105,33 @@ Use `doc.internal.pageSize.getWidth()` — never hardcode `210` (breaks landscap
 ### i18n
 Add new keys to **both** `src/i18n/de.ts` and `src/i18n/en.ts` simultaneously.
 
+### Responsive table columns — never use `hidden sm:table-cell`
+`index.css` defines a custom `.table-cell` component class (`text-sm text-gray-700 …`). This name collides with Tailwind's `table-cell` utility. In WebKit/Safari the component styles leak onto `<th>`/`<td>` elements that carry `hidden sm:table-cell` or `hidden md:table-cell`, causing visually inconsistent rendering.
+
+**Always use the `max-*` variant instead:**
+```tsx
+// ❌ Wrong — triggers .table-cell component leak in Safari
+<th className="hidden sm:table-cell">
+<td className="hidden md:table-cell">
+
+// ✅ Correct
+<th className="max-sm:hidden">
+<td className="max-md:hidden">
+```
+Same for `hidden lg:table-cell` → `max-lg:hidden`.
+
+### Responsive table header styling
+Put font/colour classes **directly on each `<th>`**, not on the parent `<tr>`. Inherited styles from `<tr>` can be disrupted by responsive `display` changes in some browsers:
+```tsx
+// ❌ Fragile — inheritance may break
+<tr className="text-xs text-gray-500 uppercase">
+  <th className="px-3 py-2 text-left hidden md:table-cell">…</th>
+
+// ✅ Robust — explicit on every <th>
+<tr className="bg-gray-50 dark:bg-gray-800">
+  <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">…</th>
+```
+
 ## NMEA Bridge (server/)
 
 A separate Node.js process that bridges a TCP/UDP NMEA device to the browser via WebSocket. Controlled via HTTP API on the same port (3001):

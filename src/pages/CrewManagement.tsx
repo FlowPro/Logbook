@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { PlusCircle, Edit, Trash2, Users, Save, X, FileText } from 'lucide-react'
+import { PlusCircle, Edit, Trash2, Users, Save, X, FileText, AlertTriangle } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { toast } from 'sonner'
 import { db } from '../db/database'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
@@ -63,6 +64,7 @@ export function CrewManagement() {
   const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [passportCopy, setPassportCopy] = useState<string | undefined>()
   const [saving, setSaving] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
@@ -137,10 +139,12 @@ export function CrewManagement() {
     }
   }
 
-  async function deleteMember(id: number) {
-    if (confirm('Crewmitglied wirklich löschen?')) {
-      await db.crew.delete(id)
-    }
+  async function executeDeleteMember() {
+    if (deleteConfirmId === null) return
+    const id = deleteConfirmId
+    setDeleteConfirmId(null)
+    await db.crew.delete(id)
+    toast.success(t('crew.deleted'))
   }
 
   const roleOptions = [
@@ -159,7 +163,7 @@ export function CrewManagement() {
               onClick={() => setShowInactive(v => !v)}
               className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline-offset-2 hover:underline"
             >
-              {showInactive ? 'Inaktive ausblenden' : `${inactiveCount} inaktiv${inactiveCount === 1 ? 'e' : 'e'} anzeigen`}
+              {showInactive ? t('crew.hideInactive') : t('crew.showInactive', { count: inactiveCount })}
             </button>
           )}
         </div>
@@ -171,8 +175,8 @@ export function CrewManagement() {
       {sortedCrew.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {visibleCrew.map(member => (
-            <Card key={member.id} padding={false} className={!member.isActive ? 'opacity-60' : ''}>
-              <div className="p-4">
+            <Card key={member.id} padding={false} className={`flex flex-col${!member.isActive ? ' opacity-60' : ''}`}>
+              <div className="p-4 flex-1">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-lg">{member.firstName} {member.lastName}</h3>
@@ -191,7 +195,7 @@ export function CrewManagement() {
                   member.passportCopy.startsWith('data:application/pdf')
                     ? <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-950 rounded-lg text-sm text-blue-700 dark:text-blue-300">
                         <FileText className="w-4 h-4 flex-shrink-0" />
-                        <span>Reisedokument (PDF)</span>
+                        <span>{t('crew.travelDocPdf')}</span>
                       </div>
                     : <img src={member.passportCopy} alt="Passport" className="mt-3 w-full h-24 object-cover rounded-lg" />
                 )}
@@ -219,7 +223,7 @@ export function CrewManagement() {
                 <button onClick={() => openEdit(member)} className="flex-1 p-2 text-sm text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-1.5">
                   <Edit className="w-3.5 h-3.5" /> {t('common.edit')}
                 </button>
-                <button onClick={() => deleteMember(member.id!)} className="flex-1 p-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950 flex items-center justify-center gap-1.5 border-l border-gray-100 dark:border-gray-700">
+                <button onClick={() => setDeleteConfirmId(member.id!)} className="flex-1 p-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950 flex items-center justify-center gap-1.5 border-l border-gray-100 dark:border-gray-700">
                   <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
                 </button>
               </div>
@@ -235,10 +239,29 @@ export function CrewManagement() {
       )}
       {sortedCrew.length > 0 && !showInactive && inactiveCount > 0 && visibleCrew.length === 0 && (
         <div className="text-center py-8 text-gray-400 text-sm">
-          Alle Crewmitglieder sind inaktiv.{' '}
-          <button onClick={() => setShowInactive(true)} className="text-blue-600 hover:underline">Anzeigen</button>
+          {t('crew.allInactive')}{' '}
+          <button onClick={() => setShowInactive(true)} className="text-blue-600 hover:underline">{t('crew.showAll')}</button>
         </div>
       )}
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={deleteConfirmId !== null}
+        onClose={() => setDeleteConfirmId(null)}
+        title={t('crew.deleteConfirmTitle')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setDeleteConfirmId(null)}>{t('common.cancel')}</Button>
+            <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={executeDeleteMember}>{t('common.delete')}</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700 dark:text-gray-300">{t('crew.deleteConfirmText')}</p>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={modalOpen}
@@ -254,7 +277,7 @@ export function CrewManagement() {
           </>
         }
       >
-        <form className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
             <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">{t('crew.personal')}</h4>
             <div className="grid grid-cols-2 gap-4">
@@ -276,7 +299,7 @@ export function CrewManagement() {
               label={t('crew.passportCopy')}
               attachments={passportCopy ? [{
                 id: '1',
-                name: passportCopy.startsWith('data:application/pdf') ? 'Reisedokument.pdf' : 'Reisedokument.jpg',
+                name: passportCopy.startsWith('data:application/pdf') ? 'TravelDocument.pdf' : 'TravelDocument.jpg',
                 type: passportCopy.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg',
                 data: passportCopy,
                 size: 0,

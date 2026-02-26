@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Wifi, WifiOff, RefreshCw, Trash2 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -28,9 +29,9 @@ interface LogEntry {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function secsAgo(ts: number): string {
+function secsAgo(ts: number, nowLabel: string): string {
   const s = Math.round((Date.now() - ts) / 1000)
-  if (s < 5) return 'jetzt'
+  if (s < 5) return nowLabel
   if (s < 60) return `${s}s`
   return `${Math.round(s / 60)}m`
 }
@@ -56,13 +57,14 @@ function formatMsg(msg: ParsedMsg): string {
   if (msg.windTrueSpeed     !== undefined) p.push(`TWS ${msg.windTrueSpeed.toFixed(1)} kn`)
   if (msg.baroPressureHPa   !== undefined) p.push(`${msg.baroPressureHPa.toFixed(0)} hPa`)
   if (msg.temperature       !== undefined) p.push(`${msg.temperature.toFixed(1)} °C`)
-  if (msg.depth             !== undefined) p.push(`Tiefe ${msg.depth.toFixed(1)} m`)
+  if (msg.depth             !== undefined) p.push(`Depth ${msg.depth.toFixed(1)} m`)
   return p.join(' · ') || msg.type
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
+  const { t } = useTranslation()
   const [log, setLog] = useState<LogEntry[]>([])
   const [connected, setConnected] = useState(false)
   const [, forceUpdate] = useState(0)
@@ -122,25 +124,25 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
         : undefined,
     },
     {
-      label: 'Wind appar.',
+      label: t('nmea.windApparent'),
       value: current.windApparentAngle !== undefined
         ? `${current.windApparentAngle.toFixed(0)}°  ·  ${(current.windApparentSpeed ?? 0).toFixed(1)} kn`
         : undefined,
     },
     {
-      label: 'Wind wahr',
+      label: t('nmea.windTrue'),
       value: current.windTrueDirection !== undefined || current.windTrueAngle !== undefined
         ? `${(current.windTrueDirection ?? current.windTrueAngle ?? 0).toFixed(0)}°  ·  ${(current.windTrueSpeed ?? 0).toFixed(1)} kn`
         : undefined,
     },
     {
-      label: 'Luftdruck',
+      label: t('nmea.pressure'),
       value: current.baroPressureHPa !== undefined
         ? `${current.baroPressureHPa.toFixed(0)} hPa${current.temperature !== undefined ? `  ·  ${current.temperature.toFixed(1)} °C` : ''}`
         : undefined,
     },
     {
-      label: 'Tiefe',
+      label: t('nmea.depth'),
       value: current.depth !== undefined ? `${current.depth.toFixed(1)} m` : undefined,
     },
   ]
@@ -162,7 +164,7 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
             <span className={connected
               ? 'font-medium text-green-600 dark:text-green-400'
               : 'text-gray-400'}>
-              {connected ? 'WebSocket verbunden' : 'Nicht verbunden'}
+              {connected ? t('nmea.debugConnected') : t('nmea.debugNotConnected')}
             </span>
           </div>
         </div>
@@ -173,13 +175,13 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
                 <span className="font-semibold text-gray-700 dark:text-gray-300">{msgsPerMin}</span> msg/min
               </span>
               {lastTs && (
-                <span className="text-gray-400">letzte vor {secsAgo(lastTs)}</span>
+                <span className="text-gray-400">{t('nmea.lastBefore')} {secsAgo(lastTs, t('nmea.now'))}</span>
               )}
               <button
                 type="button"
                 onClick={() => setLog([])}
                 className="text-gray-400 hover:text-red-500 transition-colors"
-                title="Log leeren"
+                title={t('nmea.clearLog')}
               >
                 <Trash2 className="w-3 h-3" />
               </button>
@@ -192,13 +194,13 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
       {!hasData && connected && (
         <div className="flex items-center justify-center gap-2 px-3 py-5 text-gray-400">
           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          Warte auf NMEA-Daten…
+          {t('nmea.waitingNmea')}
         </div>
       )}
 
       {!hasData && !connected && (
         <div className="px-3 py-5 text-center text-gray-400">
-          Kein Signal — Bridge nicht verbunden
+          {t('nmea.noSignal')}
         </div>
       )}
 
@@ -219,7 +221,7 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
           {/* ── Message log ── */}
           <div className="max-h-52 overflow-y-auto">
             <div className="px-3 py-1 text-gray-400 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              Letzte Nachrichten
+              {t('nmea.recentMessages')}
             </div>
             {log.slice(0, 30).map((entry, i) => (
               <div
@@ -227,7 +229,7 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
                 className="flex items-baseline gap-2 px-3 py-1 border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
               >
                 <span className="text-gray-300 dark:text-gray-600 w-8 shrink-0 text-right tabular-nums">
-                  {secsAgo(entry.ts)}
+                  {secsAgo(entry.ts, t('nmea.now'))}
                 </span>
                 <span className="font-mono font-bold text-blue-600 dark:text-blue-400 w-8 shrink-0">
                   {sentenceId(entry.msg._raw)}
