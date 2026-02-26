@@ -24,13 +24,22 @@ Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Da
 
 ## Voraussetzungen
 
+**Für die PWA (Webversion):**
+
 | Software | Version | Download |
 |----------|---------|----------|
 | **Node.js** | 18 oder neuer (getestet mit v19.1.0) | https://nodejs.org |
 | **npm** | wird mit Node.js mitgeliefert | — |
 | **Git** | optional, für Clone | https://git-scm.com |
 
+**Zusätzlich für die Tauri Desktop-App (nur Entwickler, die selbst bauen):**
+
+| Software | Version | Download |
+|----------|---------|----------|
+| **Rust** | stable | https://rustup.rs |
+
 > **Hinweis:** Auf macOS empfiehlt sich die Installation von Node.js über [nvm](https://github.com/nvm-sh/nvm) oder [Homebrew](https://brew.sh) (`brew install node`).
+> Endnutzer können die fertige Desktop-App direkt von GitHub Releases herunterladen — ohne Rust oder Node.js.
 
 ---
 
@@ -40,8 +49,8 @@ Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Da
 
 **Option A — Git Clone (empfohlen):**
 ```bash
-git clone https://github.com/dein-benutzername/logbuch.git
-cd logbuch
+git clone https://github.com/FlowPro/Logbook.git
+cd Logbook
 ```
 
 **Option B — ZIP herunterladen:**
@@ -92,10 +101,44 @@ Erzeugt einen optimierten Build im Ordner `dist/`. Dieser kann:
 | Befehl | Beschreibung |
 |--------|-------------|
 | `npm run dev` | Entwicklungsserver starten (hot reload) |
-| `npm run build` | Produktions-Build erstellen |
+| `npm run build` | Produktions-Build erstellen (PWA) |
 | `npm run preview` | Fertigen Build lokal testen |
 | `npm run server` | Nur NMEA-Bridge starten |
 | `npm run dev:nmea` | App + NMEA-Bridge gleichzeitig starten |
+| `npm run tauri:dev` | Tauri Desktop-App im Entwicklungsmodus starten |
+| `npm run tauri:build` | Tauri Desktop-App für aktuelles Betriebssystem bauen |
+
+---
+
+## Desktop-App (Tauri)
+
+Logbuch ist auch als native Desktop-App für Windows, macOS und Linux verfügbar — gebaut mit [Tauri](https://tauri.app).
+
+### Installation
+
+Fertige Installationsdateien auf der **[Releases-Seite](https://github.com/FlowPro/Logbook/releases)** herunterladen:
+
+| Betriebssystem | Datei | Beschreibung |
+|----------------|-------|--------------|
+| **Windows** | `.msi` | Windows Installer (empfohlen) |
+| **macOS** | `.dmg` | Disk Image — öffnen und App in Programme ziehen |
+| **Linux** | `.AppImage` | Ausführbar machen (`chmod +x`) und starten |
+
+> Kein Node.js, kein Rust, keine Kommandozeile erforderlich — einfach herunterladen und installieren.
+
+### Automatische Updates
+
+Die Desktop-App prüft beim Start automatisch auf neue Versionen und bietet ein Update an. Updates werden über GitHub Releases verteilt und sind kryptografisch signiert.
+
+### Selbst bauen (Entwickler)
+
+```bash
+# Voraussetzungen: Node.js + Rust (rustup.rs)
+npm install
+npm run tauri:build
+```
+
+Der fertige Installer liegt danach unter `src-tauri/target/release/bundle/`.
 
 ---
 
@@ -238,6 +281,10 @@ logbuch/
 │   ├── i18n/           Übersetzungen (de.ts, en.ts)
 │   ├── pages/          Alle Seiten der App
 │   └── utils/          Hilfsfunktionen (PDF, Geo, Einheiten)
+├── src-tauri/          Tauri Desktop-App (Rust + Konfiguration)
+│   ├── src/            Rust-Quellcode (main.rs, lib.rs)
+│   ├── icons/          App-Icons (alle Plattformen)
+│   └── tauri.conf.json Tauri-Konfiguration (Fenster, Updater, ...)
 ├── server/             NMEA-Bridge (optionaler Node.js-Dienst)
 ├── public/             Statische Assets (Icons, Manifest)
 ├── dist/               Produktions-Build (nach npm run build)
