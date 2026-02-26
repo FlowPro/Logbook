@@ -132,16 +132,30 @@ Kein Node.js, kein Rust, keine Kommandozeile erforderlich.
 
 #### Sicherheitswarnung beim ersten Start
 
-Die App ist **nicht mit einem offiziellen Zertifikat signiert**. Beim ersten Start erscheint deshalb eine Warnung des Betriebssystems — das ist normal und kein Zeichen für Schadsoftware.
+Die App ist **nicht mit einem offiziellen Apple- oder Microsoft-Zertifikat signiert und nicht notarisiert**. Beim ersten Start erscheint deshalb eine Warnung — das ist normal und kein Zeichen für Schadsoftware.
 
-**macOS:**
+**macOS — Fehler: „App ist beschädigt"**
+
+> *„Logbuch.app ist beschädigt und kann nicht geöffnet werden."*
+
+Dieser Fehler erscheint auf neueren macOS-Versionen, weil die App kein Apple-Notarization-Zertifikat hat. Die App ist **nicht** beschädigt. Lösung: Das Quarantine-Attribut per Terminal entfernen:
+
+```bash
+xattr -cr /Applications/Logbuch.app
+```
+
+Danach lässt sich die App normal starten.
+
+**macOS — Fehler: „Entwickler nicht verifiziert"**
+
 > *„Logbuch.app kann nicht geöffnet werden, da der Entwickler nicht verifiziert werden kann."*
 
 → **Rechtsklick** auf die App → **Öffnen** → im Dialog erneut **Öffnen** klicken.
 Alternativ: Systemeinstellungen → Datenschutz & Sicherheit → **Trotzdem öffnen**.
 
-**Windows:**
-> *„Windows hat den PC geschützt"* (SmartScreen)
+**Windows — SmartScreen**
+
+> *„Windows hat den PC geschützt"*
 
 → **Weitere Informationen** klicken → **Trotzdem ausführen**.
 
