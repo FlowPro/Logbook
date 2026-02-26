@@ -5,8 +5,13 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag name for the release'
+        required: false
+        default: 'v1.0.0'
 
-# Top-level permissions required for GitHub Releases in org repos
 permissions:
   contents: write
 
@@ -18,16 +23,16 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
-            rust-targets: ''
+            rust-target: ''
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
-            rust-targets: 'aarch64-apple-darwin'
+            rust-target: 'aarch64-apple-darwin'
           - platform: macos-latest
             args: '--target x86_64-apple-darwin'
-            rust-targets: 'x86_64-apple-darwin'
+            rust-target: 'x86_64-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
-            rust-targets: ''
+            rust-target: ''
 
     runs-on: ${{ matrix.platform }}
 
@@ -41,15 +46,22 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install Rust (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.rust-targets }}
+      - name: Install Rust stable
+        run: rustup update stable && rustup default stable
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - name: Add macOS Rust targets
+        if: matrix.rust-target != ''
+        run: rustup target add ${{ matrix.rust-target }}
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
         with:
-          workspaces: './src-tauri -> target'
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
