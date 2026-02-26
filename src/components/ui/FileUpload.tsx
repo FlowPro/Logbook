@@ -63,8 +63,21 @@ function AttachmentLightbox({ att, onClose }: { att: DocumentAttachment; onClose
             src={att.data}
             alt={att.name}
             className="max-w-full max-h-full object-contain rounded shadow-2xl"
+            style={{ imageOrientation: 'from-image' }}
             onClick={e => e.stopPropagation()}
           />
+        ) : att.type === 'application/pdf' ? (
+          <div
+            className="w-full max-w-3xl flex-shrink-0 rounded overflow-hidden shadow-2xl bg-white"
+            style={{ height: 'calc(100vh - 120px)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <iframe
+              src={att.data + '#view=FitV&scrollbar=1'}
+              title={att.name}
+              className="w-full h-full"
+            />
+          </div>
         ) : (
           <iframe
             src={att.data}
@@ -170,7 +183,7 @@ export function FileUpload({
                 title="Ansehen"
               >
                 {att.type.startsWith('image/') ? (
-                  <img src={att.data} alt={att.name} className="w-10 h-10 object-cover" />
+                  <img src={att.data} alt={att.name} className="w-10 h-10 object-cover" style={{ imageOrientation: 'from-image' }} />
                 ) : (
                   <div className="w-10 h-10 flex items-center justify-center bg-blue-100 dark:bg-blue-900">
                     <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
