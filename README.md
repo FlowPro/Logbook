@@ -110,27 +110,44 @@ Erzeugt einen optimierten Build im Ordner `dist/`. Dieser kann:
 
 ---
 
-## Desktop-App (Tauri)
+## Desktop-App
 
-Logbuch ist auch als native Desktop-App für Windows, macOS und Linux verfügbar — gebaut mit [Tauri](https://tauri.app).
+Logbuch ist als native Desktop-App für Windows, macOS und Linux verfügbar — gebaut mit [Tauri](https://tauri.app).
 
-### Installation
+---
 
-Fertige Installationsdateien auf der **[Releases-Seite](https://github.com/FlowPro/Logbook/releases)** herunterladen:
+### Für Endnutzer — Installer herunterladen
+
+Aktuelle Version auf der **[Releases-Seite](https://github.com/FlowPro/Logbook/releases)** herunterladen:
 
 | Betriebssystem | Datei | Beschreibung |
 |----------------|-------|--------------|
-| **Windows** | `.msi` | Windows Installer (empfohlen) |
+| **Windows** | `.msi` | Windows Installer |
 | **macOS** | `.dmg` | Disk Image — öffnen und App in Programme ziehen |
 | **Linux** | `.AppImage` | Ausführbar machen (`chmod +x`) und starten |
 
-> Kein Node.js, kein Rust, keine Kommandozeile erforderlich — einfach herunterladen und installieren.
+Kein Node.js, kein Rust, keine Kommandozeile erforderlich.
 
-### Automatische Updates
+> **Automatische Updates:** Die App prüft beim Start auf neue Versionen und bietet ein Update an.
 
-Die Desktop-App prüft beim Start automatisch auf neue Versionen und bietet ein Update an. Updates werden über GitHub Releases verteilt und sind kryptografisch signiert.
+#### Sicherheitswarnung beim ersten Start
 
-### Selbst bauen (Entwickler)
+Die App ist **nicht mit einem offiziellen Zertifikat signiert**. Beim ersten Start erscheint deshalb eine Warnung des Betriebssystems — das ist normal und kein Zeichen für Schadsoftware.
+
+**macOS:**
+> *„Logbuch.app kann nicht geöffnet werden, da der Entwickler nicht verifiziert werden kann."*
+
+→ **Rechtsklick** auf die App → **Öffnen** → im Dialog erneut **Öffnen** klicken.
+Alternativ: Systemeinstellungen → Datenschutz & Sicherheit → **Trotzdem öffnen**.
+
+**Windows:**
+> *„Windows hat den PC geschützt"* (SmartScreen)
+
+→ **Weitere Informationen** klicken → **Trotzdem ausführen**.
+
+---
+
+### Für Entwickler — Aus dem Quellcode bauen
 
 ```bash
 # Voraussetzungen: Node.js + Rust (rustup.rs)
@@ -139,6 +156,12 @@ npm run tauri:build
 ```
 
 Der fertige Installer liegt danach unter `src-tauri/target/release/bundle/`.
+
+Für den Entwicklungsmodus mit Live-Reload:
+
+```bash
+npm run tauri:dev
+```
 
 ---
 
@@ -303,6 +326,18 @@ logbuch/
 - [jsPDF](https://github.com/parallax/jsPDF) + [autotable](https://github.com/simonbengtsson/jsPDF-AutoTable)
 - [Recharts](https://recharts.org)
 - [vite-plugin-pwa](https://vite-pwa-org.netlify.app)
+
+---
+
+## Haftungsausschluss
+
+Logbuch wird **ohne jegliche Gewährleistung** und ohne Support bereitgestellt. Die Nutzung erfolgt auf eigene Verantwortung.
+
+- Kein offizieller Support, keine garantierten Updates, kein SLA
+- Datenverlust durch Browsercache-Löschung oder fehlende Backups liegt in der Verantwortung des Nutzers
+- Die App ist nicht für sicherheitskritische Navigation geeignet — sie ersetzt keine offiziellen Seekarten oder zugelassene Navigationssoftware
+
+Die Software wird so bereitgestellt, wie sie ist (*„as is"*).
 
 ---
 
