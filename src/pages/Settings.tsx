@@ -174,7 +174,8 @@ export function Settings() {
       })
       const { relaunch } = await import('@tauri-apps/plugin-process')
       await relaunch()
-    } catch {
+    } catch (err) {
+      console.error('[updater] checkForUpdate failed:', err)
       setUpdateState('error')
     }
   }
@@ -406,130 +407,6 @@ export function Settings() {
         )}
       </Card>
 
-      {/* Auto backup */}
-      <Card>
-        <button type="button" onClick={() => toggleSection('backup')} className="w-full flex items-center justify-between gap-2 text-left">
-          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
-            <Info className="w-4 h-4 text-gray-500" />
-            {t('settings.backup')}
-          </div>
-          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('backup') ? 'rotate-180' : ''}`} />
-        </button>
-        {openSections.has('backup') && (
-        <div className="mt-4 space-y-4">
-          {/* Toggle */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">{t('settings.autoBackup')}</p>
-              <p className="text-sm text-gray-500">Tägliche automatische Sicherung</p>
-              {settings.autoBackup && (
-                <div className="mt-1 space-y-0.5">
-                  {settings.lastBackupDate ? (
-                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Letztes Backup: {new Date(settings.lastBackupDate).toLocaleDateString('de-DE')} um {new Date(settings.lastBackupDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                    </p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Noch kein automatisches Backup erstellt</p>
-                  )}
-                  {settings.lastBackupDate && (() => {
-                    const next = new Date(settings.lastBackupDate)
-                    next.setDate(next.getDate() + 1)
-                    return (
-                      <p className="text-xs text-blue-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Nächstes Backup: {next.toLocaleDateString('de-DE')} (beim App-Start)
-                      </p>
-                    )
-                  })()}
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => updateSettings({ autoBackup: !settings.autoBackup })}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-                settings.autoBackup ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-              }`}
-            >
-              <span
-                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                  settings.autoBackup ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-
-          {/* Backup directory picker */}
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-            <p className="text-sm font-medium mb-1">Backup-Ordner / Backup Folder</p>
-            {backupDirLabel ? (
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 min-w-0">
-                  <FolderOpen className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate font-mono">{backupDirLabel}</span>
-                </div>
-                <button
-                  onClick={handleClearBackupDir}
-                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 flex-shrink-0"
-                  title="Ordner entfernen"
-                >
-                  <FolderX className="w-3.5 h-3.5" />
-                  Entfernen
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-gray-400 italic">Kein Ordner ausgewählt — Standard Downloads</p>
-                <Button size="sm" variant="secondary" icon={<FolderOpen className="w-4 h-4" />} onClick={handlePickBackupDir}>
-                  Wählen
-                </Button>
-              </div>
-            )}
-            <p className="text-xs text-gray-400 mt-2">
-              Speichert Backups direkt in den gewählten Ordner (z.B. USB-Stick). Erfordert Chrome oder Edge.
-            </p>
-          </div>
-
-          {/* Manual backup & restore */}
-          <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Manuelles Backup</p>
-            <div className="flex items-start justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-              <div className="min-w-0">
-                <p className="font-medium text-sm">{t('export.backupData')}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{t('export.backupNote')}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{datePrefix()} - Logbuch Backup.zip</p>
-              </div>
-              <Button
-                size="sm"
-                variant="secondary"
-                icon={<Download className="w-4 h-4" />}
-                onClick={handleBackup}
-                loading={backupLoading}
-              >
-                {t('common.export')}
-              </Button>
-            </div>
-            <div className="flex items-start justify-between gap-4 p-3 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
-                  <p className="font-medium text-sm text-red-700 dark:text-red-400">{t('export.restoreData')}</p>
-                </div>
-                <p className="text-xs text-red-500 mt-0.5">{t('export.restoreNote')}</p>
-              </div>
-              <label className="cursor-pointer flex-shrink-0">
-                <span className="btn-danger text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg">
-                  <Upload className="w-3.5 h-3.5" />
-                  {t('common.import')}
-                </span>
-                <input type="file" accept=".zip,.json" onChange={handleRestoreSelect} className="hidden" />
-              </label>
-            </div>
-          </div>
-        </div>
-        )}
-      </Card>
-
       {/* NMEA Bridge */}
       <Card>
         <button type="button" onClick={() => toggleSection('nmea')} className="w-full flex items-center justify-between gap-2 text-left">
@@ -666,6 +543,130 @@ export function Settings() {
         )}
       </Card>
 
+      {/* Auto backup */}
+      <Card>
+        <button type="button" onClick={() => toggleSection('backup')} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+            <Info className="w-4 h-4 text-gray-500" />
+            {t('settings.backup')}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('backup') ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.has('backup') && (
+        <div className="mt-4 space-y-4">
+          {/* Toggle */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">{t('settings.autoBackup')}</p>
+              <p className="text-sm text-gray-500">Tägliche automatische Sicherung</p>
+              {settings.autoBackup && (
+                <div className="mt-1 space-y-0.5">
+                  {settings.lastBackupDate ? (
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Letztes Backup: {new Date(settings.lastBackupDate).toLocaleDateString('de-DE')} um {new Date(settings.lastBackupDate).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Noch kein automatisches Backup erstellt</p>
+                  )}
+                  {settings.lastBackupDate && (() => {
+                    const next = new Date(settings.lastBackupDate)
+                    next.setDate(next.getDate() + 1)
+                    return (
+                      <p className="text-xs text-blue-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Nächstes Backup: {next.toLocaleDateString('de-DE')} (beim App-Start)
+                      </p>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => updateSettings({ autoBackup: !settings.autoBackup })}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
+                settings.autoBackup ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  settings.autoBackup ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Backup directory picker */}
+          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+            <p className="text-sm font-medium mb-1">Backup-Ordner / Backup Folder</p>
+            {backupDirLabel ? (
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 min-w-0">
+                  <FolderOpen className="w-4 h-4 flex-shrink-0" />
+                  <span className="truncate font-mono">{backupDirLabel}</span>
+                </div>
+                <button
+                  onClick={handleClearBackupDir}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 flex-shrink-0"
+                  title="Ordner entfernen"
+                >
+                  <FolderX className="w-3.5 h-3.5" />
+                  Entfernen
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-gray-400 italic">Kein Ordner ausgewählt — Standard Downloads</p>
+                <Button size="sm" variant="secondary" icon={<FolderOpen className="w-4 h-4" />} onClick={handlePickBackupDir}>
+                  Wählen
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-gray-400 mt-2">
+              Speichert Backups direkt in den gewählten Ordner (z.B. USB-Stick). Erfordert Chrome oder Edge.
+            </p>
+          </div>
+
+          {/* Manual backup & restore */}
+          <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Manuelles Backup</p>
+            <div className="flex items-start justify-between gap-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <div className="min-w-0">
+                <p className="font-medium text-sm">{t('export.backupData')}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t('export.backupNote')}</p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{datePrefix()} - Logbuch Backup.zip</p>
+              </div>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Download className="w-4 h-4" />}
+                onClick={handleBackup}
+                loading={backupLoading}
+              >
+                {t('common.export')}
+              </Button>
+            </div>
+            <div className="flex items-start justify-between gap-4 p-3 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-800">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
+                  <p className="font-medium text-sm text-red-700 dark:text-red-400">{t('export.restoreData')}</p>
+                </div>
+                <p className="text-xs text-red-500 mt-0.5">{t('export.restoreNote')}</p>
+              </div>
+              <label className="cursor-pointer flex-shrink-0">
+                <span className="btn-danger text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg">
+                  <Upload className="w-3.5 h-3.5" />
+                  {t('common.import')}
+                </span>
+                <input type="file" accept=".zip,.json" onChange={handleRestoreSelect} className="hidden" />
+              </label>
+            </div>
+          </div>
+        </div>
+        )}
+      </Card>
+
       {/* Danger zone */}
       <Card>
         <button type="button" onClick={() => toggleSection('danger')} className="w-full flex items-center justify-between gap-2 text-left">
@@ -711,7 +712,7 @@ export function Settings() {
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex justify-between">
               <span>{t('settings.version')}</span>
-              <span className="font-mono">1.0.4</span>
+              <span className="font-mono">1.0.6</span>
             </div>
             <div className="flex justify-between">
               <span>Datenspeicherung</span>

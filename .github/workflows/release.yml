@@ -1,6 +1,7 @@
 name: Release
 
 # Triggered by pushing a version tag, e.g.: git tag v1.1.0 && git push --tags
+# Can also be triggered manually via workflow_dispatch (e.g. to repair a release).
 on:
   push:
     tags:
@@ -8,15 +9,20 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag name for the release'
-        required: false
-        default: 'v1.0.0'
+        description: 'Tag name for the release (e.g. v1.0.5)'
+        required: true
+        default: 'v1.0.5'
 
 permissions:
   contents: write
 
 jobs:
   publish-tauri:
+    # Serialize macOS jobs to avoid race condition when both try to update latest.json
+    concurrency:
+      group: tauri-release-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.platform }}-${{ matrix.rust-target }}
+      cancel-in-progress: false
+
     strategy:
       fail-fast: false
       matrix:
@@ -83,8 +89,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Logbuch ${{ github.ref_name }}'
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: 'Logbuch ${{ github.event.inputs.tag || github.ref_name }}'
           releaseBody: |
             ## Änderungen
             Siehe Commit-Verlauf für Details.
