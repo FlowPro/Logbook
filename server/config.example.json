@@ -1,0 +1,12 @@
+{
+  "_comment": "NMEA Bridge configuration — copy to config.json and adjust to your boat's network",
+  "nmea": {
+    "host": "192.168.1.100",
+    "port": 10110,
+    "protocol": "tcp",
+    "reconnectIntervalMs": 5000
+  },
+  "websocket": {
+    "port": 3001
+  }
+}
