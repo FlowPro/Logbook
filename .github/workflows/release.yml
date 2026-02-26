@@ -18,27 +18,18 @@ permissions:
 
 jobs:
   publish-tauri:
-    # Serialize macOS jobs to avoid race condition when both try to update latest.json
-    concurrency:
-      group: tauri-release-${{ github.event.inputs.tag || github.ref_name }}-${{ matrix.platform }}-${{ matrix.rust-target }}
-      cancel-in-progress: false
-
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-latest
             args: ''
-            rust-target: ''
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
-            rust-target: 'aarch64-apple-darwin'
-          - platform: macos-latest
-            args: '--target x86_64-apple-darwin'
-            rust-target: 'x86_64-apple-darwin'
+            # Universal binary: runs natively on both Apple Silicon and Intel Macs.
+            # Single job eliminates the race condition that prevented latest.json from being uploaded.
+            args: '--target universal-apple-darwin'
           - platform: ubuntu-22.04
             args: ''
-            rust-target: ''
 
     runs-on: ${{ matrix.platform }}
 
@@ -55,9 +46,9 @@ jobs:
       - name: Install Rust stable
         run: rustup update stable && rustup default stable
 
-      - name: Add macOS Rust targets
-        if: matrix.rust-target != ''
-        run: rustup target add ${{ matrix.rust-target }}
+      - name: Add macOS Rust targets (universal binary requires both)
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Cache Cargo registry
         uses: actions/cache@v4

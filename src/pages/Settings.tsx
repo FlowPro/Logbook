@@ -712,7 +712,7 @@ export function Settings() {
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex justify-between">
               <span>{t('settings.version')}</span>
-              <span className="font-mono">1.0.6</span>
+              <span className="font-mono">1.0.7</span>
             </div>
             <div className="flex justify-between">
               <span>Datenspeicherung</span>
