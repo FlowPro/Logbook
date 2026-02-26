@@ -24,12 +24,10 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
-          # Native ARM runner — no --target flag so output lands in target/release/bundle/
-          # where tauri-action can find the .sig files needed for latest.json.
-          - platform: macos-14
-            args: ''
-          # Native Intel runner — same reason: no cross-compilation, no path mismatch.
-          - platform: macos-13
+          # ARM runner, no --target flag — output lands in target/release/bundle/
+          # where tauri-action can find .sig files to generate latest.json.
+          # Intel Mac users run the ARM binary transparently via Rosetta 2.
+          - platform: macos-latest
             args: ''
           - platform: ubuntu-22.04
             args: ''
