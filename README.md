@@ -28,9 +28,12 @@ Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Da
 
 | Software | Version | Download |
 |----------|---------|----------|
-| **Node.js** | 18 oder neuer (getestet mit v19.1.0) | https://nodejs.org |
+| **Node.js** | **20 oder 22 LTS** (empfohlen) | https://nodejs.org |
 | **npm** | wird mit Node.js mitgeliefert | — |
 | **Git** | optional, für Clone | https://git-scm.com |
+
+> **Wichtig:** Node.js **v18, v20 oder v22** verwenden. v19 und v21 sind keine LTS-Versionen und werden von mehreren Abhängigkeiten (Vite, Workbox) nicht unterstützt — `npm install` funktioniert zwar, gibt aber Warnungen aus und der Build kann instabil sein.
+> Auf macOS empfiehlt sich die Installation über [nvm](https://github.com/nvm-sh/nvm) (`nvm install 22`) oder [Homebrew](https://brew.sh) (`brew install node`).
 
 **Zusätzlich für die Tauri Desktop-App (nur Entwickler, die selbst bauen):**
 
@@ -38,7 +41,6 @@ Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Da
 |----------|---------|----------|
 | **Rust** | stable | https://rustup.rs |
 
-> **Hinweis:** Auf macOS empfiehlt sich die Installation von Node.js über [nvm](https://github.com/nvm-sh/nvm) oder [Homebrew](https://brew.sh) (`brew install node`).
 > Endnutzer können die fertige Desktop-App direkt von GitHub Releases herunterladen — ohne Rust oder Node.js.
 
 ---
@@ -86,13 +88,20 @@ Die App ist dann unter **http://localhost:5173** erreichbar.
 npm run build
 ```
 
-Erzeugt einen optimierten Build im Ordner `dist/`. Dieser kann:
+Erzeugt einen optimierten Build im Ordner `dist/`. Danach muss der Preview-Server separat gestartet werden:
 
-- **Lokal vorschauen:** `npm run preview` → http://localhost:4173
+```bash
+npm run preview
+```
+
+Die App ist dann unter **http://localhost:4173** erreichbar.
+
+> `npm run build` allein startet keinen Server — ohne `npm run preview` ist localhost:4173 nicht erreichbar.
+
+Der fertige Build kann ausserdem:
+
 - **Auf einem Webserver deployen:** Inhalt von `dist/` in das Web-Root kopieren (z.B. Nginx, Apache, GitHub Pages)
-- **Als PWA installieren:** Im Browser auf die Installations-Schaltfläche in der Adressleiste klicken
-
-> Für die PWA-Installation muss die App über **HTTPS** oder **localhost** ausgeliefert werden.
+- **Als PWA installieren:** Im Browser auf die Installations-Schaltfläche in der Adressleiste klicken (nur über HTTPS oder localhost)
 
 ---
 
