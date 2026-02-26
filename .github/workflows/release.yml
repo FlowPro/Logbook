@@ -24,10 +24,13 @@ jobs:
         include:
           - platform: windows-latest
             args: ''
-          - platform: macos-latest
-            # Universal binary: runs natively on both Apple Silicon and Intel Macs.
-            # Single job eliminates the race condition that prevented latest.json from being uploaded.
-            args: '--target universal-apple-darwin'
+          # Native ARM runner — no --target flag so output lands in target/release/bundle/
+          # where tauri-action can find the .sig files needed for latest.json.
+          - platform: macos-14
+            args: ''
+          # Native Intel runner — same reason: no cross-compilation, no path mismatch.
+          - platform: macos-13
+            args: ''
           - platform: ubuntu-22.04
             args: ''
 
@@ -45,10 +48,6 @@ jobs:
 
       - name: Install Rust stable
         run: rustup update stable && rustup default stable
-
-      - name: Add macOS Rust targets (universal binary requires both)
-        if: matrix.platform == 'macos-latest'
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Cache Cargo registry
         uses: actions/cache@v4
