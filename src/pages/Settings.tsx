@@ -3,10 +3,12 @@ import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { toast } from 'sonner'
 import { useSettings } from '../hooks/useSettings'
 import { db, clearLogData, exportAllData, importAllData } from '../db/database'
 import { getBackupDirLabel, setBackupDir, clearBackupDir, saveBackupFileWithPicker } from '../utils/backupDir'
 import { Card, CardHeader } from '../components/ui/Card'
+import { Modal } from '../components/ui/Modal'
 import { Select } from '../components/ui/Select'
 import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
@@ -33,6 +35,8 @@ export function Settings() {
   const location = useLocation()
   const [clearing, setClearing] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
+  const [restorePendingFile, setRestorePendingFile] = useState<File | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   // Bridge connection state (polling /api/status on port 3001)
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null)
@@ -185,10 +189,17 @@ export function Settings() {
     }
   }
 
-  async function handleRestore(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleRestoreSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!confirm('Achtung: Dies überschreibt ALLE vorhandenen Daten!\n\nWarning: This will overwrite ALL existing data!')) return
+    setRestorePendingFile(file)
+    e.target.value = ''
+  }
+
+  async function executeRestore() {
+    if (!restorePendingFile) return
+    const file = restorePendingFile
+    setRestorePendingFile(null)
     try {
       let jsonText: string
       if (file.name.endsWith('.zip') || file.type === 'application/zip' || file.type === 'application/x-zip-compressed') {
@@ -201,20 +212,18 @@ export function Settings() {
         jsonText = await file.text()
       }
       await importAllData(jsonText)
-      alert('Daten erfolgreich wiederhergestellt!')
+      toast.success('Daten erfolgreich wiederhergestellt!')
     } catch {
-      alert('Fehler beim Wiederherstellen der Daten.')
+      toast.error('Fehler beim Wiederherstellen der Daten.')
     }
-    e.target.value = ''
   }
 
-  async function handleClearLogData() {
-    const msg = `Alle ${entriesCount} Logeinträge und ${passagesCount} Passagen wirklich löschen?\n\nDiese Aktion kann NICHT rückgängig gemacht werden.`
-    if (!confirm(msg)) return
-    if (!confirm('Letzte Bestätigung: Alle Logdaten werden unwiderruflich gelöscht!')) return
+  async function executeClearLogData() {
+    setShowClearConfirm(false)
     setClearing(true)
     try {
       await clearLogData()
+      toast.success('Alle Logdaten gelöscht.')
     } finally {
       setClearing(false)
     }
@@ -477,7 +486,7 @@ export function Settings() {
                   <Upload className="w-3.5 h-3.5" />
                   {t('common.import')}
                 </span>
-                <input type="file" accept=".zip,.json" onChange={handleRestore} className="hidden" />
+                <input type="file" accept=".zip,.json" onChange={handleRestoreSelect} className="hidden" />
               </label>
             </div>
           </div>
@@ -641,7 +650,7 @@ export function Settings() {
             variant="danger"
             size="sm"
             icon={<Trash2 className="w-4 h-4" />}
-            onClick={handleClearLogData}
+            onClick={() => setShowClearConfirm(true)}
             loading={clearing}
             disabled={entriesCount === 0 && passagesCount === 0}
           >
@@ -681,6 +690,53 @@ export function Settings() {
         </div>
         )}
       </Card>
+
+      {/* Restore confirm modal */}
+      <Modal
+        isOpen={restorePendingFile !== null}
+        onClose={() => setRestorePendingFile(null)}
+        title="Backup wiederherstellen"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setRestorePendingFile(null)}>Abbrechen</Button>
+            <Button variant="danger" size="sm" onClick={executeRestore}>Jetzt wiederherstellen</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Alle vorhandenen Daten werden überschrieben!</p>
+            <p className="text-sm text-gray-500 mt-1">Datei: <span className="font-mono">{restorePendingFile?.name}</span></p>
+            <p className="text-sm text-gray-500 mt-1">Diese Aktion kann nicht rückgängig gemacht werden.</p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Clear all data confirm modal */}
+      <Modal
+        isOpen={showClearConfirm}
+        onClose={() => setShowClearConfirm(false)}
+        title="Logbuch zurücksetzen"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setShowClearConfirm(false)}>Abbrechen</Button>
+            <Button variant="danger" size="sm" onClick={executeClearLogData}>Unwiderruflich löschen</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              Alle {entriesCount} Logeinträge und {passagesCount} Passagen werden gelöscht.
+            </p>
+            <p className="text-sm text-gray-500 mt-1">Diese Aktion kann NICHT rückgängig gemacht werden.</p>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

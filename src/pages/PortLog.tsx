@@ -437,6 +437,7 @@ export function PortLog() {
   const [saving, setSaving] = useState(false)
   const [filterYear, setFilterYear] = useState<string>('all')
   const [lockingYear, setLockingYear] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'passage' | 'entry'; id: number; label: string } | null>(null)
 
   const passages = useLiveQuery(() =>
     db.passages.orderBy('departureDate').reverse().toArray()
@@ -542,15 +543,28 @@ export function PortLog() {
     }
   }
 
-  async function deletePassage(id: number) {
-    if (!confirm('Passage und alle zugehörigen Logeinträge löschen?')) return
-    await db.logEntries.where('passageId').equals(id).delete()
-    await db.passages.delete(id)
+  function deletePassage(id: number) {
+    const p = passages?.find(x => x.id === id)
+    const label = p ? `${p.departurePort} → ${p.arrivalPort}` : 'diese Passage'
+    setDeleteConfirm({ type: 'passage', id, label })
   }
 
-  async function deleteEntry(id: number) {
-    if (!confirm('Logeintrag löschen?')) return
-    await db.logEntries.delete(id)
+  function deleteEntry(id: number) {
+    setDeleteConfirm({ type: 'entry', id, label: 'diesen Logeintrag' })
+  }
+
+  async function executeDelete() {
+    if (!deleteConfirm) return
+    const { type, id } = deleteConfirm
+    setDeleteConfirm(null)
+    if (type === 'passage') {
+      await db.logEntries.where('passageId').equals(id).delete()
+      await db.passages.delete(id)
+      toast.success('Passage gelöscht')
+    } else {
+      await db.logEntries.delete(id)
+      toast.success('Logeintrag gelöscht')
+    }
   }
 
   async function lockSeason() {
@@ -561,7 +575,6 @@ export function PortLog() {
       toast(`Alle Passagen ${year} bereits gesperrt`)
       return
     }
-    if (!confirm(`${tolock.length} Passage(n) der Saison ${year} sperren?`)) return
     setLockingYear(true)
     try {
       const now = new Date().toISOString()
@@ -757,6 +770,30 @@ export function PortLog() {
             <textarea {...register('notes')} rows={3} className="input resize-none" />
           </div>
         </form>
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        title="Löschen bestätigen"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setDeleteConfirm(null)}>Abbrechen</Button>
+            <Button variant="danger" size="sm" onClick={executeDelete}>Löschen</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <Trash2 className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {deleteConfirm?.type === 'passage'
+              ? <>Passage <span className="font-medium">{deleteConfirm.label}</span> und alle zugehörigen Logeinträge löschen?</>
+              : <>Logeintrag löschen?</>
+            }
+          </p>
+        </div>
       </Modal>
     </div>
   )
