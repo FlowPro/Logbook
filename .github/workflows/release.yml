@@ -93,6 +93,6 @@ jobs:
             - **Windows:** `.msi` herunterladen und ausführen
             - **macOS:** `.dmg` herunterladen, öffnen und in Applications ziehen
             - **Linux:** `.AppImage` herunterladen, ausführbar machen und starten
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

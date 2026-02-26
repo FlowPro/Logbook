@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
-import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload } from 'lucide-react'
+import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
 import { useSettings } from '../hooks/useSettings'
@@ -37,6 +37,13 @@ export function Settings() {
   const [backupLoading, setBackupLoading] = useState(false)
   const [restorePendingFile, setRestorePendingFile] = useState<File | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  // Update check state (Tauri only)
+  const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+  type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'error'
+  const [updateState, setUpdateState] = useState<UpdateState>('idle')
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null)
+  const [updateProgress, setUpdateProgress] = useState(0)
 
   // Bridge connection state (polling /api/status on port 3001)
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null)
@@ -142,6 +149,35 @@ export function Settings() {
       nmeaFormLoaded.current = false
     }
   }, [settings?.nmeaEnabled])
+
+  async function checkForUpdate() {
+    if (!isTauri) return
+    setUpdateState('checking')
+    setUpdateVersion(null)
+    try {
+      const { check } = await import('@tauri-apps/plugin-updater')
+      const update = await check()
+      if (!update) {
+        setUpdateState('up-to-date')
+        return
+      }
+      setUpdateVersion(update.version)
+      setUpdateState('available')
+      setUpdateState('downloading')
+      setUpdateProgress(0)
+      let downloaded = 0
+      await update.downloadAndInstall((event) => {
+        if (event.event === 'Progress') {
+          downloaded += (event.data as { chunkLength?: number }).chunkLength ?? 0
+          setUpdateProgress(Math.min(99, Math.round(downloaded / 1024 / 1024)))
+        }
+      })
+      const { relaunch } = await import('@tauri-apps/plugin-process')
+      await relaunch()
+    } catch {
+      setUpdateState('error')
+    }
+  }
 
   async function handleMainNmeaToggle() {
     const enabling = !settings?.nmeaEnabled
@@ -670,22 +706,67 @@ export function Settings() {
           <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('about') ? 'rotate-180' : ''}`} />
         </button>
         {openSections.has('about') && (
-        <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
-          <div className="flex justify-between">
-            <span>{t('settings.version')}</span>
-            <span className="font-mono">1.0.0</span>
+        <div className="mt-4 space-y-4">
+          {/* Version info */}
+          <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex justify-between">
+              <span>{t('settings.version')}</span>
+              <span className="font-mono">1.0.4</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Datenspeicherung</span>
+              <span>IndexedDB (lokal)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Offline-fähig</span>
+              <span className="text-green-600">✓ PWA</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Tech Stack</span>
-            <span className="font-mono text-xs">React 18 + Dexie + Tailwind</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Datenspeicherung</span>
-            <span>IndexedDB (lokal)</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Offline-fähig</span>
-            <span className="text-green-600">✓ PWA</span>
+
+          {/* Update section — Tauri only */}
+          {isTauri && (
+            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">App-Update</p>
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<RefreshCw className={`w-3.5 h-3.5 ${updateState === 'checking' || updateState === 'downloading' ? 'animate-spin' : ''}`} />}
+                  onClick={checkForUpdate}
+                  disabled={updateState === 'checking' || updateState === 'downloading'}
+                >
+                  {updateState === 'checking' ? 'Prüfe...'
+                    : updateState === 'downloading' ? `Lade herunter… ${updateProgress > 0 ? updateProgress + '%' : ''}`
+                    : 'Nach Updates suchen'}
+                </Button>
+                {updateState === 'up-to-date' && (
+                  <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                    <CheckCircle className="w-4 h-4" /> Aktuell
+                  </span>
+                )}
+                {updateState === 'available' && updateVersion && (
+                  <span className="text-sm text-blue-600 dark:text-blue-400">
+                    Version {updateVersion} verfügbar
+                  </span>
+                )}
+                {updateState === 'error' && (
+                  <span className="text-sm text-red-500">Fehler beim Prüfen</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Releases link */}
+          <div className="pt-2">
+            <a
+              href="https://github.com/FlowPro/Logbook/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Alle Versionen auf GitHub
+            </a>
           </div>
         </div>
         )}
