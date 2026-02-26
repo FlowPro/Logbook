@@ -135,25 +135,48 @@ async function mergePDFPages(mainBytes: ArrayBuffer, pdfDataUrls: string[]): Pro
 }
 
 /**
+ * Save PDF bytes to disk.
+ * - Tauri (macOS/Windows/Linux app): shows a native save dialog, then writes via Rust command.
+ * - Browser/PWA: standard Blob URL download.
+ */
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+async function savePdfBytes(bytes: ArrayBuffer, filename: string): Promise<void> {
+  if (isTauri) {
+    const [{ save }, { invoke }] = await Promise.all([
+      import('@tauri-apps/plugin-dialog'),
+      import('@tauri-apps/api/core'),
+    ])
+    const path = await save({
+      defaultPath: filename,
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    })
+    if (!path) return // user cancelled
+    await invoke('save_file', { path, data: Array.from(new Uint8Array(bytes)) })
+  } else {
+    const blob = new Blob([bytes], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+}
+
+/**
  * Save a jsPDF document, merging any PDF attachments at the end via pdf-lib.
- * If there are no PDF attachments, falls back to the standard doc.save().
  */
 async function saveWithMerge(doc: jsPDF, filename: string, pdfDataUrls: string[]): Promise<void> {
+  const mainBytes = doc.output('arraybuffer')
   if (pdfDataUrls.length === 0) {
-    doc.save(filename)
+    await savePdfBytes(mainBytes, filename)
     return
   }
-  const mainBytes = doc.output('arraybuffer')
   const mergedBytes = await mergePDFPages(mainBytes, pdfDataUrls)
-  const blob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: 'application/pdf' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  await savePdfBytes(mergedBytes.buffer as ArrayBuffer, filename)
 }
 
 function formatBytes(bytes: number): string {
@@ -231,11 +254,11 @@ function sailSummary(e: LogEntry): string {
 }
 
 // ── Ship's Log / Logbuch ──────────────────────────────────────────────────────
-export function generateLogbookPDF(
+export async function generateLogbookPDF(
   entries: LogEntry[],
   ship: Ship | null | undefined,
   passages?: PassageEntry[]
-): void {
+): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', format: 'a4' })
   const PAGE_W_L = 297 // landscape width
   const PAGE_H_L = 210 // landscape height
@@ -373,15 +396,15 @@ export function generateLogbookPDF(
     })
   }
 
-  doc.save(`${datePrefix()} - Ships Log.pdf`)
+  await savePdfBytes(doc.output('arraybuffer'), `${datePrefix()} - Ships Log.pdf`)
 }
 
 // ── Single Passage PDF / Passenreport ────────────────────────────────────────
-export function generatePassagePDF(
+export async function generatePassagePDF(
   passage: PassageEntry,
   entries: LogEntry[],
   ship?: Ship | null
-): void {
+): Promise<void> {
   const doc = new jsPDF({ orientation: 'landscape', format: 'a4' })
   const PAGE_W_L = 297
   const PAGE_H_L = 210
@@ -571,7 +594,7 @@ export function generatePassagePDF(
   })
 
   const safeName = `${passage.departurePort}-${passage.arrivalPort}`.replace(/[^a-zA-Z0-9\-]/g, '_')
-  doc.save(`${datePrefix()} - Passage ${safeName}.pdf`)
+  await savePdfBytes(doc.output('arraybuffer'), `${datePrefix()} - Passage ${safeName}.pdf`)
 }
 
 // ── Ship Dossier / Schiffsakte ────────────────────────────────────────────────

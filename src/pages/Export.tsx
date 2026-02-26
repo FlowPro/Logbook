@@ -63,7 +63,7 @@ export function Export() {
   async function handleLogbookPDF() {
     setGenerating('logbook')
     try {
-      generateLogbookPDF(filteredEntries, ship, filteredPassages)
+      await generateLogbookPDF(filteredEntries, ship, filteredPassages)
     } finally {
       setGenerating(null)
     }
