@@ -47,7 +47,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQwQjA4QzNDQzI1RjQwMkEKUldRcVFGL0NQSXl3UUwyNWZhWTZveHpiRWxvZWhOVWxDVkFLN20yWkhYcFBRVUpxTDRrZ2QxM0gK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJEMjBCRTg4NDU3ODhCQkMKUldTOGkzaEZpTDRnTGVuMUQzQUlpenhidDRIMXduSE1NbkpoK2FqdzdPejBmdEV6QXpiQmZtcFQK",
       "endpoints": [
         "https://github.com/FlowPro/Logbook/releases/latest/download/latest.json"
       ],
