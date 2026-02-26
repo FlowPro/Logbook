@@ -457,6 +457,12 @@ export function PortLog() {
     return passages.filter(p => p.departureDate?.startsWith(filterYear))
   }, [passages, filterYear])
 
+  // True when every passage in the selected year is locked
+  const seasonFullyLocked = useMemo(() => {
+    if (filterYear === 'all' || !filteredPassages.length) return false
+    return filteredPassages.every(p => p.locked)
+  }, [filteredPassages, filterYear])
+
   const { register, handleSubmit, watch, reset, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
@@ -598,12 +604,18 @@ export function PortLog() {
           {filterYear !== 'all' && (
             <button
               onClick={lockSeason}
-              disabled={lockingYear}
-              className="flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 transition-colors disabled:opacity-50"
-              title={`Alle Passagen ${filterYear} sperren`}
+              disabled={lockingYear || seasonFullyLocked}
+              className={`flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border transition-colors disabled:cursor-default ${
+                seasonFullyLocked
+                  ? 'border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40'
+                  : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50'
+              }`}
+              title={seasonFullyLocked ? `Alle Passagen ${filterYear} sind gesperrt` : `Alle Passagen ${filterYear} sperren`}
             >
-              <Archive className="w-3.5 h-3.5" />
-              Saison {filterYear} sperren
+              {seasonFullyLocked
+                ? <Lock className="w-3.5 h-3.5" />
+                : <Archive className="w-3.5 h-3.5" />}
+              Saison {filterYear} {seasonFullyLocked ? 'gesperrt' : 'sperren'}
             </button>
           )}
           {filterYear !== 'all' && (
