@@ -134,24 +134,40 @@ Kein Node.js, kein Rust, keine Kommandozeile erforderlich.
 
 Die App ist **nicht mit einem offiziellen Apple- oder Microsoft-Zertifikat signiert und nicht notarisiert**. Beim ersten Start erscheint deshalb eine Warnung — das ist normal und kein Zeichen für Schadsoftware.
 
-**macOS — Fehler: „App ist beschädigt"**
+**macOS — zuverlässigste Lösung (alle Fehlervarianten)**
 
-> *„Logbuch.app ist beschädigt und kann nicht geöffnet werden."*
-
-Dieser Fehler erscheint auf neueren macOS-Versionen, weil die App kein Apple-Notarization-Zertifikat hat. Die App ist **nicht** beschädigt. Lösung: Das Quarantine-Attribut per Terminal entfernen:
+Terminal öffnen und folgenden Befehl ausführen — danach startet die App ohne Probleme:
 
 ```bash
 xattr -cr /Applications/Logbuch.app
 ```
 
-Danach lässt sich die App normal starten.
+---
 
-**macOS — Fehler: „Entwickler nicht verifiziert"**
+Je nach macOS-Version erscheint einer der folgenden Fehler. Der `xattr`-Befehl oben behebt alle davon.
 
+**Variante A — „App ist beschädigt"**
+> *„Logbuch.app ist beschädigt und kann nicht geöffnet werden."*
+
+→ Nur per `xattr -cr` behebbar (siehe oben).
+
+**Variante B — „Schadsoftware kann nicht überprüft werden"**
+> *„Apple konnte nicht überprüfen, ob Logbuch.app frei von Schadsoftware ist."*
+
+→ Entweder `xattr -cr` (Terminal), oder:
+Systemeinstellungen → Datenschutz & Sicherheit → ganz nach unten scrollen → **„Trotzdem öffnen"** → Mac-Passwort eingeben.
+
+**Variante C — „Entwickler nicht verifiziert"**
 > *„Logbuch.app kann nicht geöffnet werden, da der Entwickler nicht verifiziert werden kann."*
 
-→ **Rechtsklick** auf die App → **Öffnen** → im Dialog erneut **Öffnen** klicken.
-Alternativ: Systemeinstellungen → Datenschutz & Sicherheit → **Trotzdem öffnen**.
+→ **Rechtsklick** auf die App → **Öffnen** → erneut **Öffnen** klicken.
+
+---
+
+**Warum erscheinen diese Meldungen?**
+Logbuch ist nicht mit einem kostenpflichtigen Apple-Entwicklerzertifikat signiert und nicht bei Apple notarisiert. macOS stuft daher alle aus dem Internet geladenen Apps ohne Zertifikat als potentiell unsicher ein — unabhängig vom tatsächlichen Inhalt. Der `xattr`-Befehl entfernt lediglich das Download-Schutzattribut, das macOS beim Herunterladen automatisch setzt.
+
+---
 
 **Windows — SmartScreen**
 
