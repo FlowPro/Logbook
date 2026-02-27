@@ -70,6 +70,23 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Setup Bun (for NMEA bridge compile)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build NMEA bridge sidecar
+        shell: bash
+        run: |
+          mkdir -p src-tauri/binaries
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-x86_64-pc-windows-msvc.exe
+          elif [[ "${{ runner.os }}" == "macOS" ]]; then
+            bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-aarch64-apple-darwin
+          else
+            bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-x86_64-unknown-linux-gnu
+          fi
+
       - name: Extract release notes from CHANGELOG.md
         id: changelog
         shell: bash

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Toaster, toast } from 'sonner'
@@ -7,6 +7,10 @@ import { Header } from './Header'
 import { useSettings } from '../../hooks/useSettings'
 import { exportAllData } from '../../db/database'
 import { saveBackupFile } from '../../utils/backupDir'
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+type ChildHandle = { kill(): Promise<void> }
 
 const routeTitles: Record<string, string> = {
   '/': 'nav.dashboard',
@@ -27,6 +31,29 @@ export function AppLayout() {
   const location = useLocation()
   const { t } = useTranslation()
   const { settings, updateSettings } = useSettings()
+
+  // NMEA bridge sidecar – only active in Tauri desktop builds
+  const bridgeChild = useRef<ChildHandle | null>(null)
+  useEffect(() => {
+    if (!isTauri) return
+    if (!settings?.nmeaEnabled) {
+      bridgeChild.current?.kill().catch(() => {})
+      bridgeChild.current = null
+      return
+    }
+    if (bridgeChild.current) return // already started
+    ;(async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/status').catch(() => null)
+        if (res?.ok) return // already running externally
+        const { Command } = await import('@tauri-apps/plugin-shell')
+        const child = await Command.sidecar('binaries/nmea-bridge').spawn()
+        bridgeChild.current = child
+      } catch (e) {
+        console.error('[sidecar] Failed to start NMEA bridge:', e)
+      }
+    })()
+  }, [settings?.nmeaEnabled])
 
   // Apply dark mode on settings change
   useEffect(() => {

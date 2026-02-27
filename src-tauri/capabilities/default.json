@@ -6,6 +6,11 @@
   "permissions": [
     "core:default",
     "shell:allow-open",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [{ "name": "binaries/nmea-bridge", "sidecar": true }]
+    },
+    "shell:allow-kill",
     "updater:default",
     "process:default",
     "dialog:allow-save"

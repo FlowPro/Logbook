@@ -36,8 +36,9 @@ dist-ssr
 # NMEA Bridge – lokale Konfiguration (enthält Boot-IP)
 server/config.json
 
-# Tauri – Build-Artefakte
+# Tauri – Build-Artefakte und kompilierte Sidecar-Binaries (werden im CI erstellt)
 src-tauri/target/
+src-tauri/binaries/
 
 # Claude Code – lokale IDE-Einstellungen
 .claude/
