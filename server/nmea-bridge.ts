@@ -138,6 +138,14 @@ const httpServer = http.createServer(handleHttp)
 const wss = new WebSocketServer({ server: httpServer })
 const clients = new Set<WebSocket>()
 
+httpServer.on('error', (err: NodeJS.ErrnoException) => {
+  console.error(`[nmea] HTTP server error: ${err.message}`)
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[nmea] Port ${WS_PORT} already in use — exiting cleanly`)
+    process.exit(0)
+  }
+})
+
 httpServer.listen(WS_PORT, () => {
   console.log(`[nmea] HTTP + WebSocket server listening on port ${WS_PORT}`)
 })

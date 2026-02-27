@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.5] - 2026-02-27
+
+### Fixed
+- Windows: NMEA-Bridge-Sidecar startet jetzt automatisch neu wenn er abstürzt — 30s Watchdog-Intervall prüft `/api/status` und startet den Prozess neu falls nicht erreichbar; `bridgeSpawning`-Guard verhindert parallele Spawn-Versuche
+- Windows: NMEA-Bridge-Sidecar beendet sich sauber mit Exit-Code 0 wenn Port 3001 bereits belegt ist (EADDRINUSE) statt lautlosem Absturz
+
+---
+
 ## [1.1.4] - 2026-02-27
 
 ### Fixed

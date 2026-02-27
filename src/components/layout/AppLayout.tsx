@@ -34,6 +34,38 @@ export function AppLayout() {
 
   // NMEA bridge sidecar – only active in Tauri desktop builds
   const bridgeChild = useRef<ChildHandle | null>(null)
+  const bridgeSpawning = useRef(false)
+
+  async function spawnBridge() {
+    if (bridgeSpawning.current) return
+    bridgeSpawning.current = true
+    try {
+      const res = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(2000) }).catch(() => null)
+      if (res?.ok) return // already running (external or previous sidecar still alive)
+      bridgeChild.current = null
+      const { Command } = await import('@tauri-apps/plugin-shell')
+      const command = Command.sidecar('binaries/nmea-bridge')
+      command.stdout.on('data', (line: string) => console.log('[sidecar]', line))
+      command.stderr.on('data', (line: string) => {
+        console.warn('[sidecar stderr]', line)
+        try {
+          const prev = localStorage.getItem('nmea_sidecar_log') ?? ''
+          localStorage.setItem('nmea_sidecar_log', (prev + line + '\n').slice(-3000))
+        } catch { /* ignore */ }
+      })
+      const child = await command.spawn()
+      bridgeChild.current = child
+    } catch (e) {
+      console.error('[sidecar] Failed to start NMEA bridge:', e)
+      try {
+        const msg = e instanceof Error ? e.message : String(e)
+        localStorage.setItem('nmea_sidecar_log', `[spawn error] ${msg}\n`)
+      } catch { /* ignore */ }
+    } finally {
+      bridgeSpawning.current = false
+    }
+  }
+
   useEffect(() => {
     if (!isTauri) return
     if (!settings?.nmeaEnabled) {
@@ -41,27 +73,16 @@ export function AppLayout() {
       bridgeChild.current = null
       return
     }
-    if (bridgeChild.current) return // already started
-    ;(async () => {
-      try {
-        const res = await fetch('http://localhost:3001/api/status').catch(() => null)
-        if (res?.ok) return // already running externally
-        const { Command } = await import('@tauri-apps/plugin-shell')
-        const command = Command.sidecar('binaries/nmea-bridge')
-        command.stdout.on('data', (line: string) => console.log('[sidecar]', line))
-        command.stderr.on('data', (line: string) => {
-          console.warn('[sidecar stderr]', line)
-          try {
-            const prev = localStorage.getItem('nmea_sidecar_log') ?? ''
-            localStorage.setItem('nmea_sidecar_log', (prev + line + '\n').slice(-3000))
-          } catch { /* ignore */ }
-        })
-        const child = await command.spawn()
-        bridgeChild.current = child
-      } catch (e) {
-        console.error('[sidecar] Failed to start NMEA bridge:', e)
-      }
-    })()
+
+    spawnBridge()
+
+    // Re-check every 30 s and respawn if bridge went down
+    const id = setInterval(async () => {
+      const res = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(2000) }).catch(() => null)
+      if (!res?.ok) spawnBridge()
+    }, 30_000)
+
+    return () => clearInterval(id)
   }, [settings?.nmeaEnabled])
 
   // Apply dark mode on settings change
