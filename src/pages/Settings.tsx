@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import type { Update } from '@tauri-apps/plugin-updater'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
@@ -40,10 +41,11 @@ export function Settings() {
 
   // Update check state (Tauri only)
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
-  type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'error'
+  type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'ready' | 'downloading' | 'error'
   const [updateState, setUpdateState] = useState<UpdateState>('idle')
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
   const [updateProgress, setUpdateProgress] = useState(0)
+  const pendingUpdate = useRef<Update | null>(null)
 
   // Bridge connection state (polling /api/status on port 3001)
   const [bridgeStatus, setBridgeStatus] = useState<BridgeStatus | null>(null)
@@ -154,6 +156,7 @@ export function Settings() {
     if (!isTauri) return
     setUpdateState('checking')
     setUpdateVersion(null)
+    pendingUpdate.current = null
     try {
       const { check } = await import('@tauri-apps/plugin-updater')
       const update = await check()
@@ -161,21 +164,32 @@ export function Settings() {
         setUpdateState('up-to-date')
         return
       }
+      pendingUpdate.current = update
       setUpdateVersion(update.version)
-      setUpdateState('available')
-      setUpdateState('downloading')
-      setUpdateProgress(0)
+      setUpdateState('ready')
+    } catch (err) {
+      console.error('[updater] check failed:', err)
+      setUpdateState('error')
+    }
+  }
+
+  async function installUpdate() {
+    const update = pendingUpdate.current
+    if (!update) return
+    setUpdateState('downloading')
+    setUpdateProgress(0)
+    try {
       let downloaded = 0
       await update.downloadAndInstall((event) => {
         if (event.event === 'Progress') {
-          downloaded += (event.data as { chunkLength?: number }).chunkLength ?? 0
+          downloaded += event.data.chunkLength
           setUpdateProgress(Math.min(99, Math.round(downloaded / 1024 / 1024)))
         }
       })
       const { relaunch } = await import('@tauri-apps/plugin-process')
       await relaunch()
     } catch (err) {
-      console.error('[updater] checkForUpdate failed:', err)
+      console.error('[updater] install failed:', err)
       setUpdateState('error')
     }
   }
@@ -716,13 +730,13 @@ export function Settings() {
           {isTauri && (
             <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{t('settings.appUpdate')}</p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <Button
                   size="sm"
                   variant="secondary"
                   icon={<RefreshCw className={`w-3.5 h-3.5 ${updateState === 'checking' || updateState === 'downloading' ? 'animate-spin' : ''}`} />}
                   onClick={checkForUpdate}
-                  disabled={updateState === 'checking' || updateState === 'downloading'}
+                  disabled={updateState === 'checking' || updateState === 'downloading' || updateState === 'ready'}
                 >
                   {updateState === 'checking' ? t('settings.checking')
                     : updateState === 'downloading' ? t('settings.downloading', { progress: updateProgress > 0 ? updateProgress + '%' : '' })
@@ -733,10 +747,15 @@ export function Settings() {
                     <CheckCircle className="w-4 h-4" /> {t('settings.upToDate')}
                   </span>
                 )}
-                {updateState === 'available' && updateVersion && (
-                  <span className="text-sm text-blue-600 dark:text-blue-400">
-                    {t('settings.updateAvailable', { version: updateVersion })}
-                  </span>
+                {updateState === 'ready' && updateVersion && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-blue-600 dark:text-blue-400">
+                      {t('settings.updateAvailable', { version: updateVersion })}
+                    </span>
+                    <Button size="sm" variant="primary" icon={<Download className="w-3.5 h-3.5" />} onClick={installUpdate}>
+                      {t('settings.installUpdate')}
+                    </Button>
+                  </div>
                 )}
                 {updateState === 'error' && (
                   <span className="text-sm text-red-500">{t('settings.updateError')}</span>

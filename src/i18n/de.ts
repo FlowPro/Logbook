@@ -517,6 +517,7 @@ const de = {
       upToDate: 'Aktuell',
       updateAvailable: 'Version {{version}} verfügbar',
       updateError: 'Fehler beim Prüfen',
+      installUpdate: 'Installieren',
       allVersions: 'Alle Versionen auf GitHub',
       restoreBackupTitle: 'Backup wiederherstellen',
       restoreWarning: 'Alle vorhandenen Daten werden überschrieben!',

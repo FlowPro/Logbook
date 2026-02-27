@@ -52,7 +52,7 @@
       "endpoints": [
         "https://github.com/FlowPro/Logbook/releases/latest/download/latest.json"
       ],
-      "dialog": true
+      "dialog": false
     }
   }
 }

@@ -520,6 +520,7 @@ const en = {
       upToDate: 'Up to date',
       updateAvailable: 'Version {{version}} available',
       updateError: 'Error checking',
+      installUpdate: 'Install',
       allVersions: 'All versions on GitHub',
       restoreBackupTitle: 'Restore Backup',
       restoreWarning: 'All existing data will be overwritten!',
