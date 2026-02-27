@@ -145,7 +145,14 @@ httpServer.listen(WS_PORT, () => {
 wss.on('connection', ws => {
   clients.add(ws)
   console.log(`[nmea] Browser client connected (${clients.size} total)`)
+
+  // Keepalive: ping every 20 s so WKWebView / WebView2 don't close idle connections
+  const keepAlive = setInterval(() => {
+    if (ws.readyState === ws.OPEN) ws.ping()
+  }, 20_000)
+
   ws.on('close', () => {
+    clearInterval(keepAlive)
     clients.delete(ws)
     console.log(`[nmea] Browser client disconnected (${clients.size} remaining)`)
   })

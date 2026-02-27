@@ -47,7 +47,16 @@ export function AppLayout() {
         const res = await fetch('http://localhost:3001/api/status').catch(() => null)
         if (res?.ok) return // already running externally
         const { Command } = await import('@tauri-apps/plugin-shell')
-        const child = await Command.sidecar('binaries/nmea-bridge').spawn()
+        const command = Command.sidecar('binaries/nmea-bridge')
+        command.stdout.on('data', (line: string) => console.log('[sidecar]', line))
+        command.stderr.on('data', (line: string) => {
+          console.warn('[sidecar stderr]', line)
+          try {
+            const prev = localStorage.getItem('nmea_sidecar_log') ?? ''
+            localStorage.setItem('nmea_sidecar_log', (prev + line + '\n').slice(-3000))
+          } catch { /* ignore */ }
+        })
+        const child = await command.spawn()
         bridgeChild.current = child
       } catch (e) {
         console.error('[sidecar] Failed to start NMEA bridge:', e)

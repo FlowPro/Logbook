@@ -515,7 +515,21 @@ export function Settings() {
                         {t('nmea.startBridge')}
                       </Button>
                     ) : isTauri ? (
-                      <p className="text-xs text-gray-400">{t('settings.nmeaTauriHint')}</p>
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-400">{t('settings.nmeaTauriHint')}</p>
+                        {(() => {
+                          try {
+                            const log = localStorage.getItem('nmea_sidecar_log')
+                            if (!log) return null
+                            return (
+                              <details className="mt-1">
+                                <summary className="text-xs text-gray-400 cursor-pointer select-none">Sidecar log</summary>
+                                <pre className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-auto max-h-28 whitespace-pre-wrap">{log}</pre>
+                              </details>
+                            )
+                          } catch { return null }
+                        })()}
+                      </div>
                     ) : (
                       <div className="space-y-1">
                         <p className="text-xs text-gray-400">{t('settings.startBridge')}</p>

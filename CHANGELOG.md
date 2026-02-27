@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.4] - 2026-02-27
+
+### Fixed
+- Windows/macOS: Veraltete Service Worker werden jetzt zuverlässig beim App-Start über den Rust-Layer unregistriert — behebt dauerhaft den Catch-22 bei dem der alte SW den neuen self-destroying SW blockierte (isTauri=false, falsche NMEA-Einstellungen)
+- NMEA Bridge: WebSocket-Keepalive-Ping alle 20 s — verhindert dass WKWebView/WebView2 idle Verbindungen schließt (NMEA-Abbruch beim Seitenwechsel)
+
+---
+
 ## [1.1.3] - 2026-02-27
 
 ### Fixed
