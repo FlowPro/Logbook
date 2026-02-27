@@ -88,6 +88,13 @@ export function Settings() {
   const [nmeaSaving, setNmeaSaving] = useState(false)
   const [nmeaSaveError, setNmeaSaveError] = useState('')
 
+  // True when the user has edited host/port/protocol but not yet saved
+  const isFormDirty = bridgeStatus !== null && (
+    nmeaForm.host !== bridgeStatus.config.nmea.host ||
+    nmeaForm.port !== bridgeStatus.config.nmea.port ||
+    nmeaForm.protocol !== bridgeStatus.config.nmea.protocol
+  )
+
   // Collapsible sections – Appearance open by default; auto-open section from URL hash (e.g. /settings#nmea)
   const [openSections, setOpenSections] = useState<Set<string>>(() => {
     const initial = new Set<string>(['appearance'])
@@ -538,33 +545,27 @@ export function Settings() {
                   value={nmeaForm.protocol}
                   onChange={e => setNmeaForm(f => ({ ...f, protocol: e.target.value as 'tcp' | 'udp' }))}
                 />
-                {bridgeStatus !== null && (
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-3">
-                    <NMEAStatusIndicator connected={stableNmeaConnected} />
-                    {stableNmeaConnected ? (
+                    {bridgeStatus !== null && (
+                      <NMEAStatusIndicator connected={stableNmeaConnected} />
+                    )}
+                    {isFormDirty ? (
+                      <Button type="button" size="sm" variant="primary" disabled={nmeaSaving} loading={nmeaSaving} onClick={handleNmeaSave}>
+                        {t('settings.saveConnect')}
+                      </Button>
+                    ) : bridgeStatus !== null && stableNmeaConnected ? (
                       <Button type="button" size="sm" variant="secondary" onClick={handleNmeaReconnect}>
                         {t('nmea.reconnect')}
                       </Button>
-                    ) : (
+                    ) : bridgeStatus !== null ? (
                       <Button type="button" size="sm" variant="primary" onClick={handleNmeaConnect}>
                         {t('common.connect')}
                       </Button>
-                    )}
+                    ) : null}
                   </div>
-                )}
-                <div>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    disabled={nmeaSaving}
-                    loading={nmeaSaving}
-                    onClick={handleNmeaSave}
-                  >
-                    {t('settings.saveConnect')}
-                  </Button>
                   {nmeaSaveError && (
-                    <p className="text-xs text-red-500 mt-1.5">{nmeaSaveError}</p>
+                    <p className="text-xs text-red-500">{nmeaSaveError}</p>
                   )}
                 </div>
               </div>
