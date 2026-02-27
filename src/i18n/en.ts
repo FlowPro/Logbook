@@ -334,6 +334,8 @@ const en = {
       legendMotor:   'Motor',
       legendMooring: 'Mooring',
       noData:        'No log entries with coordinates for the selected filter.',
+      precacheBtn:   'Save world map offline',
+      precacheDone:  '✓ World map cached',
     },
 
     // Port Log
@@ -498,7 +500,13 @@ const en = {
       darkMode: 'Dark Mode',
       autoBackup: 'Auto Backup',
       backup: 'Data Backup',
+      shipSection: 'Ship Data',
       nmeaIntegration: 'NMEA Integration',
+      mapSection: 'Map View',
+      protomapsHint: 'Add a free API key for Protomaps vector tiles (better quality, offline cache):',
+      protomapsKey: 'Protomaps API Key',
+      protomapsKeySet: 'API key set — map uses Protomaps vector tiles.',
+      protomapsKeyEmpty: 'Without an API key, OpenFreeMap tiles are used (online only, no offline cache).',
       dangerZone: 'Danger Zone',
       about: 'About Logbuch',
       version: 'Version',

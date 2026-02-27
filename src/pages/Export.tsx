@@ -206,7 +206,7 @@ export function Export() {
                         <select
                           value={logbookYear}
                           onChange={e => setLogbookYear(e.target.value)}
-                          className="input appearance-none"
+                          className="input !py-[5px] appearance-none"
                         >
                           <option value="all">{t('export.allYears', { count: entries?.length ?? 0 })}</option>
                           {availableYears.map(y => (
@@ -223,7 +223,7 @@ export function Export() {
                         <select
                           value={selectedPassageId ?? ''}
                           onChange={e => setSelectedPassageId(e.target.value ? Number(e.target.value) : null)}
-                          className="input appearance-none"
+                          className="input !py-[5px] appearance-none"
                         >
                           {passages.map(p => (
                             <option key={p.id} value={p.id}>

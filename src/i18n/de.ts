@@ -331,6 +331,8 @@ const de = {
       legendMotor:   'Motor',
       legendMooring: 'Liegeplatz',
       noData:        'Keine Logeinträge mit Koordinaten für den gewählten Filter.',
+      precacheBtn:   'Weltkarte offline speichern',
+      precacheDone:  '✓ Weltkarte gecacht',
     },
 
     // Port Log
@@ -495,7 +497,13 @@ const de = {
       darkMode: 'Dunkelmodus',
       autoBackup: 'Automatische Sicherung',
       backup: 'Datensicherung',
+      shipSection: 'Schiffsdaten',
       nmeaIntegration: 'NMEA-Integration',
+      mapSection: 'Kartenansicht',
+      protomapsHint: 'Für Protomaps-Vektorkacheln (bessere Qualität, offline cachebar) einen kostenlosen API-Key hinterlegen:',
+      protomapsKey: 'Protomaps API-Key',
+      protomapsKeySet: 'API-Key gesetzt — Karte verwendet Protomaps-Vektorkacheln.',
+      protomapsKeyEmpty: 'Ohne API-Key werden OpenFreeMap-Kacheln verwendet (Online, kein Offline-Cache).',
       dangerZone: 'Gefahrenbereich',
       about: 'Über Logbuch',
       version: 'Version',

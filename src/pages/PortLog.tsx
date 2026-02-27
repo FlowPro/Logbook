@@ -721,7 +721,7 @@ export function PortLog() {
           <select
             value={filterYear}
             onChange={e => setFilterYear(e.target.value)}
-            className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-[5px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
           >
             <option value="all">{t('portLog.allYearsCount', { count: passages?.length ?? 0 })}</option>
             {availableYears.map(y => (

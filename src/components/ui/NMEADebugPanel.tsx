@@ -86,6 +86,12 @@ export function NMEADebugPanel({
 
   useEffect(() => {
     const ts = liveData?.updatedAt
+    // liveData was explicitly cleared (updatedAt gone) — reset log too
+    if (ts === undefined && prevUpdatedAt.current !== undefined) {
+      setLog([])
+      prevUpdatedAt.current = undefined
+      return
+    }
     if (!ts || ts === prevUpdatedAt.current) return
     prevUpdatedAt.current = ts
     if (liveData) addLogEntry(liveData)

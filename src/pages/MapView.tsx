@@ -1,19 +1,85 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import maplibregl from 'maplibre-gl'
 import { Protocol } from 'pmtiles'
+import { layers, namedFlavor } from '@protomaps/basemaps'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { Wind, Layers } from 'lucide-react'
+import { Wind, Layers, Download, X } from 'lucide-react'
 import { db } from '../db/database'
 import { useSettings } from '../hooks/useSettings'
 import type { Coordinate } from '../db/models'
 
-// ── Tile styles ───────────────────────────────────────────────────────────────
-const STYLES = {
+// ── Tile sources ───────────────────────────────────────────────────────────────
+
+// Fallback styles when no Protomaps API key is configured
+const FALLBACK_STYLES = {
   light: 'https://tiles.openfreemap.org/styles/liberty',
   dark:  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
 } as const
+
+// Build a full MapLibre GL style from the Protomaps API key + flavor
+function makeProtomapsStyle(apiKey: string, flavor: 'light' | 'dark') {
+  return {
+    version: 8 as const,
+    glyphs:  'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf',
+    sprite:  `https://protomaps.github.io/basemaps-assets/sprites/v4/${flavor}`,
+    sources: {
+      protomaps: {
+        type: 'vector' as const,
+        tiles: [`https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=${apiKey}`],
+        maxzoom: 15,
+        attribution:
+          '© <a href="https://protomaps.com">Protomaps</a> ' +
+          '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+      },
+    },
+    layers: layers('protomaps', namedFlavor(flavor)),
+  }
+}
+
+// ── Offline pre-cache ──────────────────────────────────────────────────────────
+
+/** Total number of tiles from z=0 to z=maxZoom */
+function tileCount(maxZoom: number) {
+  let n = 0
+  for (let z = 0; z <= maxZoom; z++) n += (2 ** z) ** 2
+  return n
+}
+
+/** Pre-fetch every tile for z=0..maxZoom to populate the SW/browser cache */
+async function precacheTiles(
+  apiKey: string,
+  maxZoom: number,
+  onProgress: (done: number, total: number) => void,
+  signal: AbortSignal,
+) {
+  const total = tileCount(maxZoom)
+  let done = 0
+  const BATCH = 20
+
+  for (let z = 0; z <= maxZoom && !signal.aborted; z++) {
+    const n = 2 ** z
+    const coords: [number, number][] = []
+    for (let x = 0; x < n; x++)
+      for (let y = 0; y < n; y++)
+        coords.push([x, y])
+
+    // Process in batches
+    for (let i = 0; i < coords.length && !signal.aborted; i += BATCH) {
+      const batch = coords.slice(i, i + BATCH)
+      await Promise.allSettled(
+        batch.map(([x, y]) =>
+          fetch(`https://api.protomaps.com/tiles/v4/${z}/${x}/${y}.mvt?key=${apiKey}`,
+            { signal }
+          ).catch(() => {})
+        )
+      )
+      done += batch.length
+      onProgress(done, total)
+    }
+  }
+}
 
 // ── Mooring display ───────────────────────────────────────────────────────────
 const MOORING_ICON: Record<string, string> = {
@@ -69,8 +135,8 @@ export function MapView() {
   const mapContainerRef  = useRef<HTMLDivElement>(null)
   const mapRef           = useRef<maplibregl.Map | null>(null)
   const dataRef          = useRef<MapData | null>(null)
-  // Tracks what style is currently applied to the map (initialised as light)
   const appliedStyleRef  = useRef<'light' | 'dark'>('light')
+  const cacheAbortRef    = useRef<AbortController | null>(null)
   const [mapReady, setMapReady] = useState(false)
 
   const [filterMode,        setFilterMode]        = useState<FilterMode>('all')
@@ -78,9 +144,19 @@ export function MapView() {
   const [selectedYear,      setSelectedYear]       = useState<number>(new Date().getFullYear())
   const [showWind,          setShowWind]           = useState(true)
 
-  // Map tile style follows the global dark mode setting – no separate toggle
+  // Offline pre-cache state
+  const [cacheState,    setCacheState]    = useState<'idle' | 'running' | 'done'>('idle')
+  const [cacheProgress, setCacheProgress] = useState(0) // 0-100
+
   const isDark       = settings?.darkMode ?? false
   const desiredStyle = isDark ? 'dark' : 'light'
+  const apiKey       = settings?.protomapsApiKey?.trim() ?? ''
+  const hasApiKey    = apiKey.length > 0
+
+  // Resolve the style: Protomaps if API key set, else fallback
+  const resolveStyle = useCallback((flavor: 'light' | 'dark') =>
+    hasApiKey ? makeProtomapsStyle(apiKey, flavor) : FALLBACK_STYLES[flavor],
+  [hasApiKey, apiKey])
 
   // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -119,7 +195,6 @@ export function MapView() {
     )
     if (valid.length === 0) return null
 
-    // Route segments colored by propulsion
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routeFeatures: any[] = []
     for (let i = 0; i < valid.length - 1; i++) {
@@ -138,7 +213,6 @@ export function MapView() {
       })
     }
 
-    // All log entries with GPS as points
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pointFeatures: any[] = valid.map(e => ({
       type: 'Feature',
@@ -159,7 +233,6 @@ export function MapView() {
       },
     }))
 
-    // Wind arrow features
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const windFeatures: any[] = valid
       .filter(e => e.windTrueDirection != null)
@@ -182,13 +255,11 @@ export function MapView() {
     return { routeFeatures, pointFeatures, windFeatures, bounds }
   }, [entries])
 
-  // Keep latest data in ref so style switches can refill sources
   useEffect(() => { dataRef.current = geojson }, [geojson])
 
   // ── Layer setup ───────────────────────────────────────────────────────────────
 
   const setupLayers = useCallback((map: maplibregl.Map) => {
-    // Route lines (blue = sail, orange = motor)
     map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     map.addLayer({
       id: 'route-sail', type: 'line', source: 'route',
@@ -203,7 +274,6 @@ export function MapView() {
       paint: { 'line-color': '#f97316', 'line-width': 3, 'line-opacity': 0.85 },
     })
 
-    // Wind arrows
     map.addSource('wind', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     map.addLayer({
       id: 'wind-arrows', type: 'symbol', source: 'wind', minzoom: 6,
@@ -221,7 +291,6 @@ export function MapView() {
 
     map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
 
-    // Layer 1: underway entries — small circles, blue = sail, orange = motor
     map.addLayer({
       id: 'entry-dots', type: 'circle', source: 'points',
       filter: ['==', ['get', 'mooring'], 'underway'],
@@ -235,8 +304,6 @@ export function MapView() {
       },
     })
 
-    // Layer 2: moored/anchored entries — larger circles, teal shades by type
-    // Circle layers always render reliably in MapLibre (no font glyph dependency).
     map.addLayer({
       id: 'mooring-dots', type: 'circle', source: 'points',
       filter: ['!=', ['get', 'mooring'], 'underway'],
@@ -256,7 +323,6 @@ export function MapView() {
       },
     })
 
-    // Popup on click – shows propulsion OR mooring status (never both)
     const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '268px' })
 
     const showPopup = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
@@ -274,7 +340,6 @@ export function MapView() {
         ? `${p.bft} Bft · ${p.windSpd.toFixed(1)} kn aus ${Math.round(p.windDir)}°`
         : `${p.bft} Bft · ${p.windSpd.toFixed(1)} kn`
 
-      // Underway: propulsion + SOG. Moored: mooring status only (no conflicting sail/anchor).
       const statusHtml = isUnderway
         ? `<div style="color:#374151">${p.motor ? '⚙ Motor' : '⛵ Segel'} · SOG ${p.sog.toFixed(1)} kn</div>`
         : `<div style="color:#0d9488">${moorIcon} ${moorLabel}</div>`
@@ -299,7 +364,6 @@ export function MapView() {
     })
   }, [])
 
-  // Fill GeoJSON sources
   const fillSources = useCallback((map: maplibregl.Map, data: MapData | null) => {
     const empty = { type: 'FeatureCollection' as const, features: [] }
     ;(map.getSource('route')  as maplibregl.GeoJSONSource | undefined)?.setData(
@@ -325,11 +389,10 @@ export function MapView() {
     const pmtilesProtocol = new Protocol()
     maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile)
 
-    // Always initialise with light style; the style-switch effect below will
-    // switch to dark immediately if dark mode is already active.
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: STYLES.light,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      style: resolveStyle('light') as any,
       center: [10, 48],
       zoom: 4,
       attributionControl: false,
@@ -361,10 +424,11 @@ export function MapView() {
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
-    if (appliedStyleRef.current === desiredStyle) return   // already correct
+    if (appliedStyleRef.current === desiredStyle) return
     appliedStyleRef.current = desiredStyle
     setMapReady(false)
-    map.setStyle(STYLES[desiredStyle])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    map.setStyle(resolveStyle(desiredStyle) as any)
     map.once('style.load', () => {
       setupLayers(map)
       fillSources(map, dataRef.current)
@@ -389,12 +453,37 @@ export function MapView() {
     map.setLayoutProperty('wind-arrows', 'visibility', showWind ? 'visible' : 'none')
   }, [mapReady, showWind])
 
+  // ── Offline pre-cache handler ─────────────────────────────────────────────────
+
+  async function handleStartCache() {
+    if (!hasApiKey || cacheState === 'running') return
+    const ctrl = new AbortController()
+    cacheAbortRef.current = ctrl
+    setCacheState('running')
+    setCacheProgress(0)
+    try {
+      await precacheTiles(apiKey, 6, (done, total) => {
+        setCacheProgress(Math.round((done / total) * 100))
+      }, ctrl.signal)
+      if (!ctrl.signal.aborted) setCacheState('done')
+    } catch {
+      // aborted or network error
+    } finally {
+      if (ctrl.signal.aborted) setCacheState('idle')
+    }
+  }
+
+  function handleCancelCache() {
+    cacheAbortRef.current?.abort()
+    setCacheState('idle')
+    setCacheProgress(0)
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────────
 
   const noData = !entries || entries.filter(e => e.latitude?.degrees != null).length === 0
 
   return (
-    // Full available height: 100dvh minus header (h-14 = 56px) and page padding (p-6 = 24px×2)
     <div className="flex flex-col gap-3" style={{ height: 'calc(100dvh - 56px - 3rem)' }}>
 
       {/* Filter + controls bar */}
@@ -416,9 +505,6 @@ export function MapView() {
             </button>
           ))}
 
-          {/* Toolbar dropdowns: native <select> with .input visual styling, but py-[5px]
-              so total height (border 1px×2 + padding 5px×2 + line-height) matches
-              the filter buttons (no border + padding 6px×2 + line-height). */}
           {filterMode === 'passage' && passages && (
             <select
               value={selectedPassageId != null ? String(selectedPassageId) : ''}
@@ -447,8 +533,41 @@ export function MapView() {
           )}
         </div>
 
-        {/* Right: wind toggle + legend */}
+        {/* Right: offline cache + wind toggle + legend */}
         <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Offline cache button (only with API key) */}
+          {hasApiKey && cacheState === 'idle' && (
+            <button
+              onClick={handleStartCache}
+              title={t('map.precacheBtn')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="max-lg:hidden">{t('map.precacheBtn')}</span>
+            </button>
+          )}
+
+          {cacheState === 'running' && (
+            <div className="flex items-center gap-2">
+              <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                  style={{ width: `${cacheProgress}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500">{cacheProgress}%</span>
+              <button onClick={handleCancelCache} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700">
+                <X className="w-3 h-3 text-gray-400" />
+              </button>
+            </div>
+          )}
+
+          {cacheState === 'done' && (
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium px-2">
+              {t('map.precacheDone')}
+            </span>
+          )}
 
           {/* Wind toggle */}
           <button
@@ -499,7 +618,7 @@ export function MapView() {
         </div>
       </div>
 
-      {/* Map – flex-1 fills remaining height */}
+      {/* Map */}
       <div className="relative flex-1 min-h-0 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
         <div ref={mapContainerRef} className="absolute inset-0" />
 

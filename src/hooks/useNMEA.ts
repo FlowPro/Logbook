@@ -17,7 +17,7 @@ export interface NMEAData {
   _raw?: string          // original NMEA sentence string
 }
 
-export function useNMEA(wsUrl?: string): { connected: boolean; data: NMEAData } {
+export function useNMEA(wsUrl?: string): { connected: boolean; data: NMEAData; clearData: () => void } {
   const [connected, setConnected] = useState(false)
   const [data, setData] = useState<NMEAData>({})
   const wsRef = useRef<WebSocket | null>(null)
@@ -81,5 +81,7 @@ export function useNMEA(wsUrl?: string): { connected: boolean; data: NMEAData } 
     }
   }, [wsUrl, connect])
 
-  return { connected, data }
+  const clearData = useCallback(() => setData({}), [])
+
+  return { connected, data, clearData }
 }

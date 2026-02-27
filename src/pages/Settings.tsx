@@ -4,7 +4,7 @@ import type { Update } from '@tauri-apps/plugin-updater'
 declare const __APP_VERSION__: string
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
-import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
+import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink, Map, Anchor } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
 import { useSettings } from '../hooks/useSettings'
@@ -19,6 +19,7 @@ import { NMEAStatusIndicator } from '../components/ui/NMEAImportPanel'
 import { NMEADebugPanel } from '../components/ui/NMEADebugPanel'
 import { useNMEAContext } from '../contexts/NMEAContext'
 import { getFlagUrl } from '../utils/flagUrl'
+import { ShipData } from './ShipData'
 
 function datePrefix(): string {
   return new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -40,7 +41,7 @@ export function Settings() {
   const location = useLocation()
 
   // NMEA live data – reads from the single persistent connection in AppLayout
-  const { data: nmeaLiveData } = useNMEAContext()
+  const { data: nmeaLiveData, clearData: clearNmeaData } = useNMEAContext()
   const [clearing, setClearing] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
   const [restorePendingFile, setRestorePendingFile] = useState<File | null>(null)
@@ -347,6 +348,7 @@ export function Settings() {
         nmeaDeviceProtocol: nmeaForm.protocol,
       })
       nmeaFormLoaded.current = false
+      clearNmeaData()
     } catch {
       setNmeaSaveError(t('settings.nmeaSaveError'))
     } finally {
@@ -366,6 +368,7 @@ export function Settings() {
 
   async function handleNmeaReconnect() {
     const apiBase = getApiBase(settings?.nmeaBridgeUrl || 'ws://localhost:3001')
+    clearNmeaData()
     await fetch(`${apiBase}/api/disconnect`, { method: 'POST' }).catch(() => {})
     await fetch(`${apiBase}/api/connect`, { method: 'POST' }).catch(() => {})
   }
@@ -401,6 +404,22 @@ export function Settings() {
             </button>
           ))}
         </div>
+      </Card>
+
+      {/* Ship Data */}
+      <Card>
+        <button type="button" onClick={() => toggleSection('ship')} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+            <Anchor className="w-4 h-4 text-gray-500" />
+            {t('settings.shipSection')}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('ship') ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.has('ship') && (
+          <div className="mt-4">
+            <ShipData embedded />
+          </div>
+        )}
       </Card>
 
       {/* Appearance */}
@@ -637,6 +656,50 @@ export function Settings() {
             </>
           )}
         </div>
+        )}
+      </Card>
+
+      {/* Map / Protomaps */}
+      <Card>
+        <button type="button" onClick={() => toggleSection('map')} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+            <Map className="w-4 h-4 text-gray-500" />
+            {t('settings.mapSection')}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('map') ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.has('map') && (
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              {t('settings.protomapsHint')}{' '}
+              <a
+                href="https://protomaps.com/api"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 underline"
+              >
+                protomaps.com/api
+              </a>
+            </p>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('settings.protomapsKey')}
+              </label>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="••••••••••••••••"
+                  value={settings?.protomapsApiKey ?? ''}
+                  onChange={e => updateSettings({ protomapsApiKey: e.target.value })}
+                  className="flex-1 font-mono text-sm"
+                />
+              </div>
+              {settings?.protomapsApiKey
+                ? <p className="text-xs text-green-600 dark:text-green-400">{t('settings.protomapsKeySet')}</p>
+                : <p className="text-xs text-gray-400">{t('settings.protomapsKeyEmpty')}</p>
+              }
+            </div>
+          </div>
         )}
       </Card>
 

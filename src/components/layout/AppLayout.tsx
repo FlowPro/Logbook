@@ -17,7 +17,6 @@ type ChildHandle = { kill(): Promise<void> }
 const routeTitles: Record<string, string> = {
   '/': 'nav.dashboard',
   '/log/new': 'nav.newEntry',
-  '/ship': 'nav.ship',
   '/crew': 'nav.crew',
   '/summary': 'nav.summary',
   '/ports': 'nav.portLog',

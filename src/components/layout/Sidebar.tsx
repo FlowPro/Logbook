@@ -50,13 +50,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const navItems = [
     { to: '/',            icon: LayoutDashboard, label: t('nav.dashboard'),    end: true, badge: 0 },
     { to: '/ports',       icon: MapPin,          label: t('nav.portLog'),      badge: passageCount },
-    { to: '/maintenance', icon: Wrench,          label: t('nav.maintenance'),  badge: pendingMaint, badgeAlert: overdueMaint > 0 },
     { to: '/summary',     icon: BarChart3,       label: t('nav.summary'),      badge: 0 },
     { to: '/map',         icon: Map,             label: t('nav.map'),          badge: 0 },
+    { to: '/maintenance', icon: Wrench,          label: t('nav.maintenance'),  badge: pendingMaint, badgeAlert: overdueMaint > 0 },
+    { to: '/crew',        icon: Users,           label: t('nav.crew'),         badge: 0 },
     { to: '/export',      icon: Download,        label: t('nav.export'),       badge: 0 },
     { to: '/search',      icon: Search,          label: t('nav.search'),       badge: 0 },
-    { to: '/crew',        icon: Users,           label: t('nav.crew'),         badge: 0 },
-    { to: '/ship',        icon: Anchor,          label: t('nav.ship'),         badge: 0 },
   ]
 
   const emergencyItems = [

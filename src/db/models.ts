@@ -283,6 +283,8 @@ export interface AppSettings {
   nmeaDeviceHost?: string
   nmeaDevicePort?: number
   nmeaDeviceProtocol?: 'tcp' | 'udp'
+  // Map / Protomaps API
+  protomapsApiKey?: string
   updatedAt: string
 }
 

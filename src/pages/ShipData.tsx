@@ -56,7 +56,11 @@ const DEFAULTS: FormData = {
   contactEmail: '', contactPhone: '',
 }
 
-export function ShipData() {
+interface ShipDataProps {
+  embedded?: boolean
+}
+
+export function ShipData({ embedded = false }: ShipDataProps) {
   const { t } = useTranslation()
   const { ship, saveShip } = useShip()
   const [documents, setDocuments] = useState<DocumentAttachment[]>([])
@@ -103,20 +107,22 @@ export function ShipData() {
   const r3 = 'grid grid-cols-1 md:grid-cols-3 gap-4'
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">{t('ship.title')}</h1>
-        <div className="flex gap-2">
-          {ship && (
-            <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={() => generateShipDossierPDF(ship)}>
-              {t('ship.printDossier')}
+    <div className={embedded ? 'space-y-6' : 'max-w-3xl mx-auto space-y-6'}>
+      {!embedded && (
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h1 className="text-2xl font-bold">{t('ship.title')}</h1>
+          <div className="flex gap-2">
+            {ship && (
+              <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={() => generateShipDossierPDF(ship)}>
+                {t('ship.printDossier')}
+              </Button>
+            )}
+            <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
+              {saved ? t('common.saved') : t('common.save')}
             </Button>
-          )}
-          <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-            {saved ? t('common.saved') : t('common.save')}
-          </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <Card>

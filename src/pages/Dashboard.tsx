@@ -205,7 +205,7 @@ export function Dashboard() {
           value={String(activeCrew?.length ?? 0)}
           color="purple"
         />
-        <Link to="/ship" className="block">
+        <Link to="/settings#ship" className="block">
           <div className="card p-4 hover:shadow-md transition-shadow">
             <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
               <Anchor className="w-5 h-5" />

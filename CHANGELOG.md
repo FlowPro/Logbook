@@ -7,6 +7,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.0] - 2026-02-28
+
+### Added
+- Karte: Protomaps-Vektorkacheln via API-Key (bessere Qualität, einheitlicher Stil hell/dunkel)
+- Karte: Offline-Vorabladen der Weltkarte z0–z6 (~20 MB) für echten Offline-Betrieb
+- Karte: Workbox-Cache für Protomaps-, OpenFreeMap- und Carto-Kacheln (CacheFirst, 30 Tage)
+- Einstellungen: Schiffsdaten als aufklappbare Sektion — eigener Menüpunkt entfernt
+- Einstellungen: Tieflink `/settings#ship` öffnet Schiffsdaten direkt (analog `#nmea`)
+- Dashboard: Schiffs-Kachel verlinkt neu auf `/settings#ship`
+- NMEA: Live-Daten und «Letzte Nachrichten» werden beim Neu-Verbinden/Speichern geleert
+
+### Changed
+- Navigation: Wartung nach Karte verschoben; Besatzung nach Wartung verschoben
+- Navigation: Schiffsdaten-Menüpunkt entfernt (Inhalt in Einstellungen)
+- Export/Wartung/Passagen: Dropdown-Höhe vereinheitlicht (`py-[5px]`, 32 px)
+
+---
+
 ## [1.3.0] - 2026-02-27
 
 ### Added

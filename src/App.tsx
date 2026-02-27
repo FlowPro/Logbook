@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/layout/AppLayout'
 import { Dashboard } from './pages/Dashboard'
 import { LogEntryForm } from './pages/LogEntryForm'
-import { ShipData } from './pages/ShipData'
 import { CrewManagement } from './pages/CrewManagement'
 import { Summary } from './pages/Summary'
 import { PortLog } from './pages/PortLog'
@@ -32,7 +31,6 @@ function App() {
           <Route path="log/new" element={<LogEntryForm />} />
           <Route path="log/:id" element={<LogEntryForm />} />
           <Route path="log/:id/edit" element={<LogEntryForm />} />
-          <Route path="ship" element={<ShipData />} />
           <Route path="crew" element={<CrewManagement />} />
           <Route path="summary" element={<Summary />} />
           <Route path="ports" element={<PortLog />} />

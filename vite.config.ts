@@ -126,6 +126,58 @@ export default defineConfig({
                 maxAgeSeconds: 60 * 60 * 24 * 365
               }
             }
+          },
+          // Protomaps vector tiles (cached as user browses + offline pre-cache)
+          {
+            urlPattern: /^https:\/\/api\.protomaps\.com\/tiles\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'protomaps-tiles',
+              expiration: {
+                maxEntries: 100000,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          // Protomaps fonts + sprites (hosted on GitHub Pages)
+          {
+            urlPattern: /^https:\/\/protomaps\.github\.io\/basemaps-assets\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'protomaps-assets',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 365
+              },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          // OpenFreeMap fallback tiles
+          {
+            urlPattern: /^https:\/\/tiles\.openfreemap\.org\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'openfreemap-tiles',
+              expiration: {
+                maxEntries: 10000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
+              cacheableResponse: { statuses: [0, 200] }
+            }
+          },
+          // Carto dark matter tiles (dark mode fallback)
+          {
+            urlPattern: /^https:\/\/basemaps\.cartocdn\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'carto-tiles',
+              expiration: {
+                maxEntries: 10000,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              },
+              cacheableResponse: { statuses: [0, 200] }
+            }
           }
         ]
       },

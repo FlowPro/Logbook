@@ -644,7 +644,7 @@ export function Maintenance() {
           <select
             value={filterYear}
             onChange={e => setFilterYear(e.target.value)}
-            className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-[5px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
             title={t('maintenance.filterYear')}
           >
             <option value="all">{t('maintenance.allYears')}</option>
