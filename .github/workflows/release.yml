@@ -70,6 +70,19 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
+      - name: Extract release notes from CHANGELOG.md
+        id: changelog
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          NOTES=$(awk "/^## \[$VERSION\]/{flag=1; next} /^## \[/{if(flag) exit} /^---/{if(flag) exit} flag" CHANGELOG.md)
+          {
+            echo "notes<<CHANGELOG_EOF"
+            echo "$NOTES"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and publish Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -80,13 +93,16 @@ jobs:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: 'Logbuch ${{ github.event.inputs.tag || github.ref_name }}'
           releaseBody: |
-            ## Änderungen
-            Siehe Commit-Verlauf für Details.
+            ${{ steps.changelog.outputs.notes }}
+
+            ---
 
             ## Installation
-            - **Windows:** `.msi` herunterladen und ausführen
-            - **macOS:** `.dmg` herunterladen, öffnen und in Applications ziehen
-            - **Linux:** `.AppImage` herunterladen, ausführbar machen und starten
+            - **Windows:** `.msi` Installer herunterladen und ausführen
+            - **macOS:** `.dmg` herunterladen, öffnen und Logbuch in Applications ziehen
+            - **Linux:** `.AppImage` herunterladen, ausführbar machen (`chmod +x`) und starten
+
+            > PWA-Nutzer: Seite im Browser neu laden, um die neue Version zu erhalten.
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true

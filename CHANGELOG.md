@@ -1,0 +1,72 @@
+# Changelog
+
+All notable changes to Logbuch are documented here.
+Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+
+## [Unreleased]
+
+### Fixed
+- NMEA: Verbindungsstatus in Einstellungen konsistent mit Header-Badge
+- NMEA: Live-Daten Panel bezieht Werte zuverlässig aus dem useNMEA-Hook
+- PWA: Weisse Seite nach Service-Worker-Update behoben
+- Updater: macOS-Updatefehler behoben (dialog:true Konflikt entfernt)
+- Windows: Versionsnummer wird nach Update korrekt angezeigt
+- Crew-Kacheln: Passportnummer und «An Bord seit» auf gleicher Höhe
+
+### Changed
+- NMEA-Einstellungen: Bridge-Server und NMEA-Gerät klarer getrennt; Live-Daten-Panel
+- NMEA-Einstellungen: Doppelter Verbinden-Button zu einem kontextuellen Button konsolidiert
+- Tabelle Logbucheinträge: Kurs, SOG, BFT, Oktas, hPa, nm zentriert ausgerichtet
+- Einstellungen: Schweizer Flagge für Deutsch-Sprachauswahl
+
+---
+
+## [1.1.0] - 2026-02-27
+
+### Added
+- Wartung: Wiederkehrende Aufgaben (täglich / wöchentlich / monatlich / jährlich / Motorstunden)
+- Wartung: Checklisten pro Aufgabe mit Fortschrittsanzeige auf Kanban-Karten
+- Dashboard: Wartungsbenachrichtigungen für Aufgaben, die in 14 Tagen fällig sind
+- Sidebar: Rotes Badge für überfällige Wartungsaufgaben
+- Länderflaggen: CSS-Sprites (flag-icons) statt Emoji in Länderauswahl und Spracheinstellungen
+- Notfall & Sicherheit: Vollständige i18n-Übersetzung (DE/EN)
+- Crew: Löschen-Bestätigung über Modal (kein nativer confirm()-Dialog mehr)
+- Port Log: Löschen-Bestätigung über Modal; Saison-Lock Toasts übersetzt
+- Export: Karten gleiche Höhe, Button immer am unteren Rand
+- PDF: Alle Beschriftungen auf Englisch vereinheitlicht
+
+### Fixed
+- Tabellentypografie-Fehler in PortLog und Dashboard (Safari-Kompatibilität)
+- Tauri v2 Updater: `createUpdaterArtifacts: true` aktiviert
+
+---
+
+## [1.0.8] - 2026-02-26
+
+### Fixed
+- GitHub Actions: macOS ARM-Runner (`macos-latest` statt deprecated `macos-13`)
+- Tauri Updater: Signing-Key aktualisiert; `latest.json` wird korrekt generiert
+
+---
+
+## [1.0.7] - 2026-02-26
+
+### Fixed
+- macOS: Universelles Binary für Updater-Kompatibilität (Rosetta 2)
+
+---
+
+## [1.0.6] - 2026-02-25
+
+### Fixed
+- Updater-Workflow und Signing-Prozess stabilisiert
+- GitHub Release Workflow: `workflow_dispatch` für manuelle Releases
+
+---
+
+## [1.0.5] - 2026-02-25
+
+### Added
+- Initiale Tauri-Desktop-App (macOS ARM, Windows x64, Linux AppImage)
+- Auto-Updater über GitHub Releases (`tauri-plugin-updater`)
+- PDF-Export in Tauri via nativen Save-Dialog (`tauri-plugin-dialog`)

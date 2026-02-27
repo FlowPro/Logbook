@@ -13,6 +13,41 @@ npm run dev:nmea   # Dev + NMEA bridge concurrently
 
 Always run `npm run build` after changes to verify TypeScript compiles cleanly.
 
+## Release Process
+
+**Trigger:** `Deploy Github` (oder `Deploy Github vX.Y.Z`) startet den Release-Prozess.
+
+### Schritte (werden bei jedem Release in dieser Reihenfolge ausgeführt)
+
+1. **Verify** – `git status` muss clean sein; `git log origin/main..HEAD` muss leer sein
+2. **Build** – `npm run build` muss ohne TypeScript-Fehler durchlaufen
+3. **Version** – Versionsnummer aus Trigger übernehmen oder nächste Patch-Version vorschlagen
+4. **Bump** – `package.json` und `src-tauri/tauri.conf.json` auf neue Version setzen
+5. **CHANGELOG** – `[Unreleased]` in `[vX.Y.Z] - YYYY-MM-DD` umbenennen, neuen leeren `[Unreleased]`-Block einfügen
+6. **Commit** – `git add package.json src-tauri/tauri.conf.json CHANGELOG.md` → `chore: release vX.Y.Z`
+7. **Push** – `git push origin main`
+8. **Bestätigung** – Zusammenfassung zeigen und explizite Freigabe abwarten
+9. **Tag** – `git tag vX.Y.Z && git push origin vX.Y.Z` → löst GitHub Actions aus
+10. **Verify** – `gh run list --workflow=release.yml --limit 1` ausgeben
+
+### Versionsregeln
+
+| Typ | Wann |
+|-----|------|
+| Patch `x.x.+1` | Bug-Fixes, Style-Anpassungen, kleine Verbesserungen |
+| Minor `x.+1.0` | Neue Features, grössere UI-Änderungen |
+| Major `+1.0.0` | Breaking Changes, vollständige Überarbeitungen |
+
+### Dateien die bei jedem Release aktualisiert werden
+
+| Datei | Was ändert sich |
+|-------|----------------|
+| `package.json` | `version` |
+| `src-tauri/tauri.conf.json` | `version` |
+| `CHANGELOG.md` | `[Unreleased]` → `[vX.Y.Z] - YYYY-MM-DD` |
+
+---
+
 ## Stack
 
 - **Vite 5** + **React 18** + **TypeScript** (strict)
