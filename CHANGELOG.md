@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.6] - 2026-02-27
+
+### Added
+- App: Fenstergrösse und -position werden beim Schliessen gespeichert und beim nächsten Start wiederhergestellt (`tauri-plugin-window-state`)
+
+---
+
 ## [1.2.5] - 2026-02-27
 
 ### Fixed
