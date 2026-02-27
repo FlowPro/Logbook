@@ -6,17 +6,15 @@ import 'flag-icons/css/flag-icons.min.css'
 import './i18n/index.ts'
 
 if ('serviceWorker' in navigator) {
+  // Always: reload when a new SW takes over — prevents white screen on PWA update
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload()
+  })
+
+  // Tauri only: unregister any lingering SWs (stale cache in WebView2/WKWebView)
   if ('__TAURI_INTERNALS__' in window) {
-    // In Tauri WebView2, service workers persist across reinstalls via %AppData%
-    // and can serve stale cached JS. Tauri serves files directly from the bundle,
-    // so service workers are unnecessary and harmful here.
     navigator.serviceWorker.getRegistrations().then(regs => {
       regs.forEach(r => r.unregister())
-    })
-  } else {
-    // PWA: reload when a new service worker takes over to avoid stale asset hashes
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload()
     })
   }
 }
