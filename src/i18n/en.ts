@@ -319,6 +319,8 @@ const en = {
       baroChart: 'Barometer Trend',
       passageList: 'Passages',
       noData: 'No data for selected period',
+      selectPassage: 'Select passage',
+      noPassages: 'No passages recorded yet.',
     },
 
     // Port Log
@@ -512,6 +514,7 @@ const en = {
       noFolderSelected: 'No folder selected — Default Downloads',
       chooseFolder: 'Select',
       backupFolderHint: 'Saves backups directly to the selected folder (e.g. USB stick). Requires Chrome or Edge.',
+      backupFolderHintApp: 'Saves backups directly to the selected folder (e.g. USB stick).',
       manualBackup: 'Manual Backup',
       resetLogbook: 'Reset Logbook',
       resetDesc: 'Permanently deletes all {{entries}} log entries and {{passages}} passages. Ship data, crew and settings are preserved.',

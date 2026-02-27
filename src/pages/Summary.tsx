@@ -10,6 +10,7 @@ import {
 import { BarChart3, Wind, Navigation, Gauge, Anchor, Thermometer } from 'lucide-react'
 import { db } from '../db/database'
 import { Card, CardHeader } from '../components/ui/Card'
+import { Select } from '../components/ui/Select'
 import { fmtNum } from '../utils/units'
 import React from 'react'
 
@@ -221,31 +222,21 @@ export function Summary() {
         )}
         {period === 'passage' && (
           <div className="mt-3">
-            <label className="label">Passage auswählen</label>
             {passages && passages.length > 0 ? (
-              <select
-                value={selectedPassageId ?? ''}
+              <Select
+                label={t('summary.selectPassage')}
+                value={selectedPassageId != null ? String(selectedPassageId) : ''}
                 onChange={e => setSelectedPassageId(e.target.value ? Number(e.target.value) : null)}
-                className="input"
-              >
-                <option value="">— Passage wählen —</option>
-                {passages.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.departurePort} → {p.arrivalPort} ({p.departureDate} – {p.arrivalDate})
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: `— ${t('summary.selectPassage')} —` },
+                  ...passages.map(p => ({
+                    value: String(p.id),
+                    label: `${p.departurePort} → ${p.arrivalPort} (${p.departureDate} – ${p.arrivalDate ?? '…'})`,
+                  })),
+                ]}
+              />
             ) : (
-              <p className="text-sm text-gray-400 italic">Noch keine Passagen erfasst.</p>
-            )}
-            {selectedPassage && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                <Anchor className="w-3 h-3 flex-shrink-0" />
-                <span>
-                  {selectedPassage.departurePort} → {selectedPassage.arrivalPort} ·{' '}
-                  {selectedPassage.departureDate} bis {selectedPassage.arrivalDate}
-                </span>
-              </div>
+              <p className="text-sm text-gray-400 italic">{t('summary.noPassages')}</p>
             )}
           </div>
         )}

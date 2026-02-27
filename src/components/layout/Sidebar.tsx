@@ -88,8 +88,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           lg:w-64
         `}
       >
-        {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-700
+        {/* Logo – height must match the Header's h-14 (56 px) */}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-700
           md:justify-center md:px-2 lg:justify-between lg:px-4">
           <div className="flex items-center gap-3 md:gap-0 lg:gap-3">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">

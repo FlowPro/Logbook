@@ -64,10 +64,10 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Title */}
+      {/* Title – hidden on desktop where the sidebar already shows the active page */}
       <div className="flex-1 min-w-0">
         {title && (
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate">
+          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 truncate lg:hidden">
             {title}
           </h1>
         )}

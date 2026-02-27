@@ -7,6 +7,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.4] - 2026-02-27
+
+### Fixed
+- Layout: Sidebar-Logo-Zeile und Header haben jetzt exakt dieselbe Höhe (`h-14`) — die horizontale Trennlinie fluchtet nun korrekt
+- Header-Titel wird auf Desktop ausgeblendet (Sidebar zeigt den aktiven Eintrag bereits) — auf Mobile/Tablet bleibt er erhalten; rechte Aktionsbuttons bleiben rechtsbündig
+- Einstellungen > Backup: Hinweistext im Backup-Ordner-Bereich unterscheidet jetzt zwischen App («Speichert Backups direkt in den gewählten Ordner») und PWA (mit Zusatz «Erfordert Chrome oder Edge»)
+- Auswertung: Passage-Dropdown verwendet jetzt den einheitlichen `Select`-Component statt einem rohen `<select>`-Element
+
+---
+
 ## [1.2.3] - 2026-02-27
 
 ### Fixed

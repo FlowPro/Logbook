@@ -316,6 +316,8 @@ const de = {
       baroChart: 'Luftdruckverlauf',
       passageList: 'Passagen',
       noData: 'Keine Daten für den gewählten Zeitraum',
+      selectPassage: 'Passage auswählen',
+      noPassages: 'Noch keine Passagen erfasst.',
     },
 
     // Port Log
@@ -509,6 +511,7 @@ const de = {
       noFolderSelected: 'Kein Ordner ausgewählt — Standard Downloads',
       chooseFolder: 'Wählen',
       backupFolderHint: 'Speichert Backups direkt in den gewählten Ordner (z.B. USB-Stick). Erfordert Chrome oder Edge.',
+      backupFolderHintApp: 'Speichert Backups direkt in den gewählten Ordner (z.B. USB-Stick).',
       manualBackup: 'Manuelles Backup',
       resetLogbook: 'Logbuch zurücksetzen',
       resetDesc: 'Löscht alle {{entries}} Logeinträge und {{passages}} Passagen unwiderruflich. Schiffsdaten, Crew und Einstellungen bleiben erhalten.',

@@ -716,7 +716,7 @@ export function Settings() {
               </div>
             )}
             <p className="text-xs text-gray-400 mt-2">
-              {t('settings.backupFolderHint')}
+              {t(isTauri ? 'settings.backupFolderHintApp' : 'settings.backupFolderHint')}
             </p>
           </div>
 
