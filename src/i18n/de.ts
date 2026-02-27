@@ -491,6 +491,8 @@ const de = {
       bridgeServer: 'Bridge-Server',
       bridgeNotReachable: 'Bridge nicht erreichbar',
       startBridge: 'Starte den Bridge-Server:',
+      nmeaBridgeUrlLabel: 'Bridge URL',
+      nmeaTauriHint: 'Die NMEA-Bridge läuft als separater Serverprozess. Ändere die URL oben, wenn die Bridge auf einem anderen Gerät im Bordnetz läuft.',
       bridgeActive: 'Bridge aktiv',
       nmeaDevice: 'NMEA-Gerät',
       protocol: 'Protokoll',

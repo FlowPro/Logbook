@@ -80,6 +80,9 @@ export function Settings() {
   const [processControlAvailable, setProcessControlAvailable] = useState(false)
   const [processSwitching, setProcessSwitching] = useState(false)
 
+  // Bridge URL draft (edited in-place, saved on blur)
+  const [bridgeUrlDraft, setBridgeUrlDraft] = useState<string | null>(null)
+
   // NMEA device form
   const [nmeaForm, setNmeaForm] = useState({
     host: '192.168.0.1', port: 10110, protocol: 'tcp' as 'tcp' | 'udp', reconnectIntervalMs: 5000,
@@ -87,6 +90,9 @@ export function Settings() {
   const nmeaFormLoaded = useRef(false)
   const [nmeaSaving, setNmeaSaving] = useState(false)
   const [nmeaSaveError, setNmeaSaveError] = useState('')
+
+  // Bridge URL shown in input — uses draft while editing, falls back to persisted setting
+  const displayBridgeUrl = bridgeUrlDraft ?? (settings?.nmeaBridgeUrl || 'ws://localhost:3001')
 
   // True when the user has edited host/port/protocol but not yet saved
   const isFormDirty = bridgeStatus !== null && (
@@ -492,6 +498,22 @@ export function Settings() {
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl space-y-3">
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{t('settings.bridgeServer')}</p>
 
+                {/* Bridge URL */}
+                <Input
+                  label={t('settings.nmeaBridgeUrlLabel')}
+                  type="text"
+                  value={displayBridgeUrl}
+                  onChange={e => setBridgeUrlDraft(e.target.value)}
+                  onBlur={() => {
+                    if (bridgeUrlDraft !== null) {
+                      const val = bridgeUrlDraft.trim() || 'ws://localhost:3001'
+                      updateSettings({ nmeaBridgeUrl: val })
+                      setBridgeUrlDraft(null)
+                    }
+                  }}
+                  placeholder="ws://localhost:3001"
+                />
+
                 {/* Bridge connection status */}
                 {bridgeStatus === null ? (
                   <div className="space-y-2">
@@ -503,6 +525,8 @@ export function Settings() {
                       <Button type="button" size="sm" variant="primary" onClick={handleBridgeStart}>
                         {t('nmea.startBridge')}
                       </Button>
+                    ) : isTauri ? (
+                      <p className="text-xs text-gray-400">{t('settings.nmeaTauriHint')}</p>
                     ) : (
                       <div className="space-y-1">
                         <p className="text-xs text-gray-400">{t('settings.startBridge')}</p>
