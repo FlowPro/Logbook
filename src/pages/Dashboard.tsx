@@ -364,13 +364,13 @@ export function Dashboard() {
                 <tr className="bg-gray-50 dark:bg-gray-800">
                   <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">{t('dashboard.dateTime')}</th>
                   <th className="px-3 py-2 text-left text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-sm:hidden">{t('logEntry.sections.position')}</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">{t('dashboard.course')}</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">{t('logEntry.sog')}</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Bft</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Oktas</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-lg:hidden">hPa</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">{t('dashboard.course')}</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">{t('logEntry.sog')}</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide">Bft</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">Oktas</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-lg:hidden">hPa</th>
                   <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">{t('dashboard.propulsion')}</th>
-                  <th className="px-3 py-2 text-right text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">nm</th>
+                  <th className="px-3 py-2 text-center text-xs text-gray-700 dark:text-gray-300 uppercase font-semibold tracking-wide max-md:hidden">nm</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -387,19 +387,19 @@ export function Dashboard() {
                     <td className="px-3 py-2 max-sm:hidden whitespace-nowrap">
                       {formatCoordinate(entry.latitude)}<br />{formatCoordinate(entry.longitude)}
                     </td>
-                    <td className="px-3 py-2 text-right max-md:hidden">
+                    <td className="px-3 py-2 text-center max-md:hidden">
                       {entry.courseTrue != null ? `${entry.courseTrue}°` : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-center">
                       {entry.speedOverGround != null ? entry.speedOverGround.toFixed(1) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right">
+                    <td className="px-3 py-2 text-center">
                       <Badge variant="beaufort" beaufortForce={entry.windBeaufort} />
                     </td>
-                    <td className="px-3 py-2 text-right max-md:hidden">
+                    <td className="px-3 py-2 text-center max-md:hidden">
                       <OktasBadge value={entry.cloudCoverOktas} />
                     </td>
-                    <td className="px-3 py-2 text-right max-lg:hidden whitespace-nowrap">
+                    <td className="px-3 py-2 text-center max-lg:hidden whitespace-nowrap">
                       {entry.baroPressureHPa ? (
                         <span>{trendIcon(entry.pressureTrend)} {entry.baroPressureHPa.toFixed(0)}</span>
                       ) : '—'}
@@ -438,7 +438,7 @@ export function Dashboard() {
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-right max-md:hidden">
+                    <td className="px-3 py-2 text-center max-md:hidden">
                       {entry.distanceSinceLastEntry.toFixed(1)}
                     </td>
                     <td className="px-3 py-2 text-right">
