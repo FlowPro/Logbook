@@ -20,10 +20,10 @@ Always run `npm run build` after changes to verify TypeScript compiles cleanly.
 ### Schritte (werden bei jedem Release in dieser Reihenfolge ausgeführt)
 
 1. **Verify** – `git status` muss clean sein; `git log origin/main..HEAD` muss leer sein
-2. **Build** – `npm run build` muss ohne TypeScript-Fehler durchlaufen
-3. **Version** – Versionsnummer aus Trigger übernehmen oder nächste Patch-Version vorschlagen
-4. **Bump** – `package.json` und `src-tauri/tauri.conf.json` auf neue Version setzen
-5. **CHANGELOG** – `[Unreleased]` in `[vX.Y.Z] - YYYY-MM-DD` umbenennen, neuen leeren `[Unreleased]`-Block einfügen
+2. **Version** – Versionsnummer aus Trigger übernehmen oder nächste Patch-Version vorschlagen
+3. **Bump** – `package.json` und `src-tauri/tauri.conf.json` auf neue Version setzen
+4. **CHANGELOG** – `[Unreleased]` in `[vX.Y.Z] - YYYY-MM-DD` umbenennen, neuen leeren `[Unreleased]`-Block einfügen
+5. **Build** – `npm run build` muss ohne TypeScript-Fehler durchlaufen (nach Bump → `dist/` hat korrekte Version)
 6. **Commit** – `git add package.json src-tauri/tauri.conf.json CHANGELOG.md` → `chore: release vX.Y.Z`
 7. **Push** – `git push origin main`
 8. **Bestätigung** – Zusammenfassung zeigen und explizite Freigabe abwarten
