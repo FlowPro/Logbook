@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.3] - 2026-02-27
+
+### Fixed
+- Windows App: NMEA-Gerätekonfiguration (Host/Port/Protokoll) geht beim Schliessen und Neustart der App nicht mehr verloren — die Konfiguration wird nun in Dexie `AppSettings` gespeichert; beim Speichern in den Einstellungen wird sie zusätzlich dort persistiert; beim Start der Bridge liest `AppLayout` die gespeicherten Werte und sendet sie per `POST /api/config` an die Bridge sobald diese erreichbar ist (Retry bis 10 s)
+- Alle Plattformen: NMEA-Geräteformular zeigt beim Öffnen der Einstellungen die zuletzt gespeicherten Werte auch wenn die Bridge noch nicht gestartet ist (Dexie-Fallback statt Standardwerte `192.168.0.1:10110`)
+
+---
+
 ## [1.2.2] - 2026-02-27
 
 ### Fixed
