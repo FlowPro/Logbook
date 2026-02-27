@@ -504,6 +504,7 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
               size="sm"
               icon={<PlusCircle className="w-4 h-4" />}
               onClick={onAddEntry}
+              disabled={!!passage.locked}
             >
               Logeintrag hinzufügen
             </Button>

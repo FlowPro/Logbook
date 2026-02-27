@@ -18,6 +18,7 @@ import { Button } from '../components/ui/Button'
 import { NMEAStatusIndicator } from '../components/ui/NMEAImportPanel'
 import { NMEADebugPanel } from '../components/ui/NMEADebugPanel'
 import { useNMEAContext } from '../contexts/NMEAContext'
+import { getFlagUrl } from '../utils/flagUrl'
 
 function datePrefix(): string {
   return new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -365,7 +366,7 @@ export function Settings() {
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              <span className={`fi fi-${lang === 'de' ? 'ch' : 'gb'} mr-2`} />
+              <img src={getFlagUrl(lang === 'de' ? 'ch' : 'gb')} alt={lang} className="w-5 h-3.5 object-cover rounded-sm mr-2 inline-block align-middle" />
               {lang === 'de' ? 'Deutsch' : 'English'}
             </button>
           ))}

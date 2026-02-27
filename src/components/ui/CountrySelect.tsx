@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getFlagUrl } from '../../utils/flagUrl'
 
 interface Country {
   code: string
@@ -205,7 +206,7 @@ function getDisplayText(value: string, valueType: 'code' | 'name'): string {
   const country = valueType === 'code'
     ? COUNTRIES.find(c => c.code === value)
     : COUNTRIES.find(c => c.name === value)
-  return country ? `${country.flag} ${country.name}` : value
+  return country ? country.name : value
 }
 
 interface CountrySelectProps {
@@ -240,6 +241,13 @@ export function CountrySelect({
       c.name.toLowerCase().includes(s) || c.code.toLowerCase().includes(s)
     )
   }, [inputValue])
+
+  const selectedCountry = useMemo(() => {
+    if (!value) return null
+    return valueType === 'code'
+      ? COUNTRIES.find(c => c.code === value) ?? null
+      : COUNTRIES.find(c => c.name === value) ?? null
+  }, [value, valueType])
 
   // Reset focused index when filtered list changes
   useEffect(() => { setFocusedIndex(-1) }, [inputValue])
@@ -305,20 +313,29 @@ export function CountrySelect({
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
       )}
-      <input
-        type="text"
-        name={name}
-        value={inputValue}
-        onChange={(e) => { setInputValue(e.target.value); setOpen(true) }}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        placeholder={t('common.searchCountry')}
-        autoComplete="off"
-        aria-autocomplete="list"
-        aria-expanded={open}
-        className={`input ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
-      />
+      <div className="relative">
+        {selectedCountry && !open && (
+          <img
+            src={getFlagUrl(selectedCountry.code)}
+            alt={selectedCountry.code}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-3.5 object-cover rounded-sm pointer-events-none"
+          />
+        )}
+        <input
+          type="text"
+          name={name}
+          value={inputValue}
+          onChange={(e) => { setInputValue(e.target.value); setOpen(true) }}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          placeholder={t('common.searchCountry')}
+          autoComplete="off"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          className={`input ${selectedCountry && !open ? 'pl-10' : ''} ${error ? 'border-red-500 focus:ring-red-500' : ''}`}
+        />
+      </div>
       {open && (
         <div
           ref={listRef}
@@ -339,7 +356,7 @@ export function CountrySelect({
                   : 'hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
-              <span className={`fi fi-${country.code.toLowerCase()} flex-shrink-0`} />
+              <img src={getFlagUrl(country.code)} alt={country.code} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" />
               <span className="text-gray-900 dark:text-gray-100">{country.name}</span>
               {valueType === 'code' && (
                 <span className="ml-auto text-xs text-gray-400 font-mono">{country.code}</span>

@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.0] - 2026-02-27
+
+### Fixed
+- Windows/macOS: Länderflaggen in Dropdowns und Sprachauswahl werden nun plattformübergreifend korrekt angezeigt — emoji-Flags (funktionieren nicht auf Windows) und CSS-Sprites (flag-icons, unzuverlässig in WebView2/WKWebView) wurden durch `<img>`-Tags mit Vite-gebündelten SVG-Assets ersetzt; `flagUrl.ts` lädt alle Flaggen via `import.meta.glob` als echte Asset-URLs
+- Port Log: «Logeintrag hinzufügen»-Button am unteren Ende der Einträgsliste ist bei gesperrten Passagen nun korrekt deaktiviert (nur der Header-Button war gesperrt)
+
+---
+
 ## [1.1.9] - 2026-02-27
 
 ### Fixed
