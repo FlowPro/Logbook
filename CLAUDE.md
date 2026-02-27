@@ -28,7 +28,8 @@ Always run `npm run build` after changes to verify TypeScript compiles cleanly.
 7. **Push** – `git push origin main`
 8. **Bestätigung** – Zusammenfassung zeigen und explizite Freigabe abwarten
 9. **Tag** – `git tag vX.Y.Z && git push origin vX.Y.Z` → löst GitHub Actions aus
-10. **Verify** – `gh run list --workflow=release.yml --limit 1` ausgeben
+10. **Dev-Server neu starten** – laufenden Dev-Server stoppen und neu starten, damit `__APP_VERSION__` in der PWA die neue Version zeigt
+11. **Verify** – `gh run list --workflow=release.yml --limit 1` ausgeben
 
 ### Versionsregeln
 
