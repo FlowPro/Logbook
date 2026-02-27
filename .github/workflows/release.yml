@@ -13,6 +13,8 @@ on:
         required: true
         default: 'v1.0.5'
 
+run-name: "Release ${{ github.event.inputs.tag || github.ref_name }}"
+
 permissions:
   contents: write
 

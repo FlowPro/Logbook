@@ -17,7 +17,10 @@
     "tauri:icon": "tauri icon public/anchor.svg",
     "build:bridge:mac": "bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-aarch64-apple-darwin --target bun-darwin-arm64",
     "build:bridge:win": "bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-x86_64-pc-windows-msvc.exe --target bun-windows-x64",
-    "build:bridge:linux": "bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-x86_64-unknown-linux-gnu --target bun-linux-x64"
+    "build:bridge:linux": "bun build --compile server/nmea-bridge.ts --outfile src-tauri/binaries/nmea-bridge-x86_64-unknown-linux-gnu --target bun-linux-x64",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -55,6 +58,7 @@
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
     "postcss": "^8.4.49",
@@ -62,6 +66,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.6.3",
     "vite": "^7.3.1",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^4.0.18"
   }
 }

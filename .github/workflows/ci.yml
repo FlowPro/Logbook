@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+run-name: "CI · ${{ github.ref_name }} · ${{ github.sha }}"
+
+permissions:
+  contents: read
+  checks: write   # required for dorny/test-reporter
+
+jobs:
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm test
+        env:
+          CI: true
+
+      - name: Publish JUnit test report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Unit Tests
+          path: test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: true
+
+      - name: Write step summary
+        if: always()
+        run: |
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f test-results/junit.xml ]; then
+            TESTS=$(grep -oP 'tests="\K[^"]+' test-results/junit.xml | head -1)
+            FAILURES=$(grep -oP 'failures="\K[^"]+' test-results/junit.xml | head -1)
+            ERRORS=$(grep -oP 'errors="\K[^"]+' test-results/junit.xml | head -1)
+            SKIPPED=$(grep -oP 'skipped="\K[^"]+' test-results/junit.xml | head -1)
+            PASSED=$((TESTS - FAILURES - ERRORS - ${SKIPPED:-0}))
+            echo "| Passed | Failed | Errors | Skipped | Total |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|--------|--------|---------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| $PASSED | $FAILURES | $ERRORS | ${SKIPPED:-0} | $TESTS |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "_No test results found._" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  build:
+    name: TypeScript Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build

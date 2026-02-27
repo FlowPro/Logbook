@@ -39,6 +39,7 @@ server/config.json
 # Tauri – Build-Artefakte und kompilierte Sidecar-Binaries (werden im CI erstellt)
 src-tauri/target/
 src-tauri/binaries/
+test-results/
 
 # Claude Code – lokale IDE-Einstellungen
 .claude/
