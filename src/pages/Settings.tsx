@@ -355,7 +355,7 @@ export function Settings() {
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
-              <span className={`fi fi-${lang === 'de' ? 'de' : 'gb'} mr-2`} />
+              <span className={`fi fi-${lang === 'de' ? 'ch' : 'gb'} mr-2`} />
               {lang === 'de' ? 'Deutsch' : 'English'}
             </button>
           ))}
