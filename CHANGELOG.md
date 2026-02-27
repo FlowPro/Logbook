@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.6] - 2026-02-27
+
+### Fixed
+- macOS/Windows: NMEA-Daten gehen beim Seitenwechsel nicht mehr verloren — eine einzige persistente WebSocket-Verbindung läuft jetzt in AppLayout (React Context) statt pro Seite neu aufgebaut zu werden; LogEntryForm und Einstellungen zeigen sofort aktuelle NMEA-Daten ohne Wartezeit
+
+---
+
 ## [1.1.5] - 2026-02-27
 
 ### Fixed

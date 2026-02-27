@@ -2,7 +2,7 @@ import { Menu, Moon, Sun, Globe, Wifi, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../../hooks/useSettings'
-import { useNMEA } from '../../hooks/useNMEA'
+import { useNMEAContext } from '../../contexts/NMEAContext'
 import { useState, useEffect, useRef } from 'react'
 
 interface HeaderProps {
@@ -15,10 +15,8 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
   const { settings, updateSettings } = useSettings()
   const [isOnline, setIsOnline] = useState(navigator.onLine)
 
-  // NMEA status – only connect when NMEA is enabled in settings
-  const { connected: wsConnected, data: nmeaData } = useNMEA(
-    settings?.nmeaEnabled ? settings.nmeaBridgeUrl ?? 'ws://localhost:3001' : undefined
-  )
+  // NMEA status – reads from the single persistent connection in AppLayout
+  const { connected: wsConnected, data: nmeaData } = useNMEAContext()
 
   // Re-check data freshness every 15 s so the badge updates promptly when data goes stale
   const [tick, setTick] = useState(0)

@@ -17,7 +17,7 @@ import { Input } from '../components/ui/Input'
 import { Button } from '../components/ui/Button'
 import { NMEAStatusIndicator } from '../components/ui/NMEAImportPanel'
 import { NMEADebugPanel } from '../components/ui/NMEADebugPanel'
-import { useNMEA } from '../hooks/useNMEA'
+import { useNMEAContext } from '../contexts/NMEAContext'
 
 function datePrefix(): string {
   return new Date().toISOString().split('T')[0].replace(/-/g, '.')
@@ -38,9 +38,8 @@ export function Settings() {
   const { settings, updateSettings } = useSettings()
   const location = useLocation()
 
-  // NMEA live data – shares the same connection as the header badge
-  const nmeaWsUrl = settings?.nmeaEnabled ? (settings.nmeaBridgeUrl || 'ws://localhost:3001') : undefined
-  const { data: nmeaLiveData } = useNMEA(nmeaWsUrl)
+  // NMEA live data – reads from the single persistent connection in AppLayout
+  const { data: nmeaLiveData } = useNMEAContext()
   const [clearing, setClearing] = useState(false)
   const [backupLoading, setBackupLoading] = useState(false)
   const [restorePendingFile, setRestorePendingFile] = useState<File | null>(null)

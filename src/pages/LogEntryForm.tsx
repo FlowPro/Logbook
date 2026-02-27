@@ -24,7 +24,8 @@ import { FileUpload } from '../components/ui/FileUpload'
 import { gpsToCoordinates, haversineDistance, coordToDecimal, decimalToCoord } from '../utils/geo'
 import { useSettings } from '../hooks/useSettings'
 import { useShip } from '../hooks/useShip'
-import { useNMEA, type NMEAData } from '../hooks/useNMEA'
+import { useNMEAContext } from '../contexts/NMEAContext'
+import type { NMEAData } from '../hooks/useNMEA'
 import { NMEAImportButton } from '../components/ui/NMEAImportPanel'
 import React from 'react'
 
@@ -265,9 +266,7 @@ export function LogEntryForm() {
 
   const { settings } = useSettings()
   const { ship } = useShip()
-  const { connected: nmeaConnected, data: nmeaData } = useNMEA(
-    settings?.nmeaEnabled ? 'ws://localhost:3001' : undefined
-  )
+  const { connected: nmeaConnected, data: nmeaData } = useNMEAContext()
 
   const existingEntry = useLiveQuery(
     () => id ? db.logEntries.get(parseInt(id)) : undefined,

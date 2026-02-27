@@ -5,6 +5,8 @@ import { Toaster, toast } from 'sonner'
 import { Sidebar } from './Sidebar'
 import { Header } from './Header'
 import { useSettings } from '../../hooks/useSettings'
+import { useNMEA } from '../../hooks/useNMEA'
+import { NMEAContext } from '../../contexts/NMEAContext'
 import { exportAllData } from '../../db/database'
 import { saveBackupFile } from '../../utils/backupDir'
 
@@ -31,6 +33,12 @@ export function AppLayout() {
   const location = useLocation()
   const { t } = useTranslation()
   const { settings, updateSettings } = useSettings()
+
+  // Single persistent NMEA WebSocket for the entire app session
+  const nmeaWsUrl = settings?.nmeaEnabled
+    ? (settings.nmeaBridgeUrl ?? 'ws://localhost:3001')
+    : undefined
+  const nmea = useNMEA(nmeaWsUrl)
 
   // NMEA bridge sidecar – only active in Tauri desktop builds
   const bridgeChild = useRef<ChildHandle | null>(null)
@@ -137,22 +145,24 @@ export function AppLayout() {
   const title = titleKey ? t(titleKey) : ''
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
-      <Toaster
-        richColors
-        position="bottom-right"
-        theme={settings?.darkMode ? 'dark' : 'light'}
-      />
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <NMEAContext.Provider value={nmea}>
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+        <Toaster
+          richColors
+          position="bottom-right"
+          theme={settings?.darkMode ? 'dark' : 'light'}
+        />
+        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header onMenuToggle={() => setSidebarOpen(v => !v)} title={title} />
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-4 md:p-6 max-w-7xl mx-auto">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Header onMenuToggle={() => setSidebarOpen(v => !v)} title={title} />
+          <main className="flex-1 overflow-y-auto">
+            <div className="p-4 md:p-6 max-w-7xl mx-auto">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </NMEAContext.Provider>
   )
 }
