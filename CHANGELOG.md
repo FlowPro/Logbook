@@ -7,6 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.9] - 2026-02-27
+
+### Fixed
+- Windows/macOS: NMEA-Debugpanel «Letzte Nachrichten» zeigt nun Einträge — das Panel erstellte bisher eine eigene WebSocket-Verbindung zum Bridge-Server, die zwar verbunden war (sichtbar als «2 Clients»), aber keine Nachrichten empfing; das Panel nutzt jetzt den NMEAContext-Datenstrom aus AppLayout und benötigt keine eigene Verbindung mehr
+- `type` und `_raw` werden nun in `NMEAData` gespeichert, sodass der Satztyp (RMC, MWV, …) im Log weiterhin angezeigt wird
+
+### Changed
+- Button-UX: Alle Buttons (primary, secondary, danger, ghost) haben nun sichtbares Hover (Abdunklung) und Press-Feedback (`translateY(1px)`); Text und Icon bleiben bei Hover weiss — Tailwind JIT kompilierte `.btn-primary`/`.btn-secondary` aus `@layer components` nicht zuverlässig; Stile vollständig außerhalb `@layer` definiert
+
+---
+
 ## [1.1.8] - 2026-02-27
 
 ### Fixed

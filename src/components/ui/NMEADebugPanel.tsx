@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import type { NMEAData } from '../../hooks/useNMEA'
@@ -65,18 +65,16 @@ function formatMsg(msg: ParsedMsg): string {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function NMEADebugPanel({
-  wsUrl,
   nmeaConnected,
   liveData,
 }: {
-  wsUrl: string
   nmeaConnected?: boolean
   liveData?: NMEAData
 }) {
   const { t } = useTranslation()
   const [log, setLog] = useState<LogEntry[]>([])
   const [, forceUpdate] = useState(0)
-  const wsRef = useRef<WebSocket | null>(null)
+  const prevUpdatedAt = useRef<number | undefined>()
 
   // Re-render every 5 s so "X ago" timestamps stay fresh
   useEffect(() => {
@@ -84,30 +82,38 @@ export function NMEADebugPanel({
     return () => clearInterval(id)
   }, [])
 
-  // WebSocket connection – used only for message logging (connection status comes from prop)
+  // Build message log from liveData changes (avoids a duplicate WS connection)
+  const addLogEntry = useCallback((data: NMEAData) => {
+    const msg: ParsedMsg = {
+      type: data.type ?? '?',
+      _raw: data._raw,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      sog: data.sog,
+      cogTrue: data.cogTrue,
+      windApparentAngle: data.windApparentAngle,
+      windApparentSpeed: data.windApparentSpeed,
+      windTrueAngle: data.windTrueDirection,
+      windTrueDirection: data.windTrueDirection,
+      windTrueSpeed: data.windTrueSpeed,
+      baroPressureHPa: data.baroPressureHPa,
+      temperature: data.temperature,
+      depth: data.depth,
+    }
+    setLog(prev => [{ ts: data.updatedAt ?? Date.now(), msg }, ...prev.slice(0, 99)])
+  }, [])
+
   useEffect(() => {
-    let ws: WebSocket
-    try {
-      ws = new WebSocket(wsUrl)
-    } catch {
-      return
-    }
-    wsRef.current = ws
-    ws.onmessage = e => {
-      try {
-        const msg = JSON.parse(e.data as string) as ParsedMsg
-        setLog(prev => [{ ts: Date.now(), msg }, ...prev.slice(0, 99)])
-      } catch { /* malformed — ignore */ }
-    }
-    return () => { ws.close() }
-  }, [wsUrl])
+    const ts = liveData?.updatedAt
+    if (!ts || ts === prevUpdatedAt.current) return
+    prevUpdatedAt.current = ts
+    if (liveData) addLogEntry(liveData)
+  }, [liveData, addLogEntry])
 
   const now = Date.now()
   const msgsPerMin = log.filter(e => now - e.ts < 60_000).length
   const lastTs = log[0]?.ts
 
-  // hasData is true as soon as the useNMEA hook (liveData) has received anything,
-  // falling back to the panel's own WS log for environments without liveData prop
   const hasData = (liveData?.updatedAt !== undefined) || log.length > 0
 
   // Current values come from liveData (useNMEA hook – reliable) with log as fallback

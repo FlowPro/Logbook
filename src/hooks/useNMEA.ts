@@ -13,6 +13,8 @@ export interface NMEAData {
   temperature?: number   // °C
   depth?: number         // meters
   updatedAt?: number     // Date.now()
+  type?: string          // NMEA sentence type, e.g. 'RMC', 'MWV'
+  _raw?: string          // original NMEA sentence string
 }
 
 export function useNMEA(wsUrl?: string): { connected: boolean; data: NMEAData } {

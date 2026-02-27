@@ -599,7 +599,6 @@ export function Settings() {
               {/* Debug panel – always visible when NMEA enabled */}
               <div className="mt-2">
                 <NMEADebugPanel
-                  wsUrl={settings.nmeaBridgeUrl || 'ws://localhost:3001'}
                   nmeaConnected={stableNmeaConnected}
                   liveData={nmeaLiveData}
                 />
