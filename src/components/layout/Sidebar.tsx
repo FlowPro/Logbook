@@ -1,3 +1,5 @@
+declare const __APP_VERSION__: string
+
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
@@ -186,7 +188,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between gap-2
           md:justify-center md:px-2 lg:justify-between lg:px-4">
           <div className="md:hidden lg:block">
-            <p className="text-xs text-gray-500">Logbuch v1.0.8</p>
+            <p className="text-xs text-gray-500">Logbuch v{__APP_VERSION__}</p>
             <p className="text-xs text-gray-600">Offline-ready PWA</p>
           </div>
           <NavLink
