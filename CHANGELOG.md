@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.2] - 2026-02-27
+
+### Fixed
+- Windows App: NSIS-Installer kann `nmea-bridge.exe` beim Update nun überschreiben — dreifache Absicherung: (1) NSIS Pre-Install Hook (`NSIS_HOOK_PREINSTALL`) ruft `taskkill /F /IM nmea-bridge.exe` vor der Dateiextraktion auf, (2) Rust `RunEvent::Exit`-Handler killt die Bridge beim App-Exit, (3) JS `invoke('kill_bridge')` direkt vor `relaunch()` im In-App-Updater
+
+---
+
 ## [1.2.1] - 2026-02-27
 
 ### Fixed

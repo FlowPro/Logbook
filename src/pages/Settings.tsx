@@ -200,6 +200,9 @@ export function Settings() {
           setUpdateProgress(Math.min(99, Math.round(downloaded / 1024 / 1024)))
         }
       })
+      // Kill nmea-bridge.exe before relaunch so the NSIS installer can overwrite it
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('kill_bridge').catch(() => {})
       const { relaunch } = await import('@tauri-apps/plugin-process')
       await relaunch()
     } catch (err) {
