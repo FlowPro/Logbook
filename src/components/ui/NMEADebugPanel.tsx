@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RefreshCw, Trash2 } from 'lucide-react'
+import type { NMEAData } from '../../hooks/useNMEA'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,15 @@ function formatMsg(msg: ParsedMsg): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function NMEADebugPanel({ wsUrl, nmeaConnected }: { wsUrl: string; nmeaConnected?: boolean }) {
+export function NMEADebugPanel({
+  wsUrl,
+  nmeaConnected,
+  liveData,
+}: {
+  wsUrl: string
+  nmeaConnected?: boolean
+  liveData?: NMEAData
+}) {
   const { t } = useTranslation()
   const [log, setLog] = useState<LogEntry[]>([])
   const [, forceUpdate] = useState(0)
@@ -93,57 +102,53 @@ export function NMEADebugPanel({ wsUrl, nmeaConnected }: { wsUrl: string; nmeaCo
     return () => { ws.close() }
   }, [wsUrl])
 
-  // Aggregate current "live" values: newest value wins for each field
-  const current = useMemo<ParsedMsg>(() => {
-    const merged: ParsedMsg = { type: '' }
-    for (let i = log.length - 1; i >= 0; i--) {
-      Object.assign(merged, log[i].msg)
-    }
-    return merged
-  }, [log])
-
   const now = Date.now()
   const msgsPerMin = log.filter(e => now - e.ts < 60_000).length
   const lastTs = log[0]?.ts
 
+  // hasData is true as soon as the useNMEA hook (liveData) has received anything,
+  // falling back to the panel's own WS log for environments without liveData prop
+  const hasData = (liveData?.updatedAt !== undefined) || log.length > 0
+
+  // Current values come from liveData (useNMEA hook – reliable) with log as fallback
+  const d = liveData ?? {}
+
   const valueRows: Array<{ label: string; value: string | undefined }> = [
     {
       label: 'Position',
-      value: current.latitude !== undefined && current.longitude !== undefined
-        ? `${current.latitude.toFixed(5)}° · ${current.longitude.toFixed(5)}°`
+      value: d.latitude !== undefined && d.longitude !== undefined
+        ? `${d.latitude.toFixed(5)}° · ${d.longitude.toFixed(5)}°`
         : undefined,
     },
     {
       label: 'SOG / COG',
-      value: current.sog !== undefined
-        ? `${current.sog.toFixed(1)} kn${current.cogTrue !== undefined ? `  ·  ${current.cogTrue.toFixed(0)}°` : ''}`
+      value: d.sog !== undefined
+        ? `${d.sog.toFixed(1)} kn${d.cogTrue !== undefined ? `  ·  ${d.cogTrue.toFixed(0)}°` : ''}`
         : undefined,
     },
     {
       label: t('nmea.windApparent'),
-      value: current.windApparentAngle !== undefined
-        ? `${current.windApparentAngle.toFixed(0)}°  ·  ${(current.windApparentSpeed ?? 0).toFixed(1)} kn`
+      value: d.windApparentAngle !== undefined
+        ? `${d.windApparentAngle.toFixed(0)}°  ·  ${(d.windApparentSpeed ?? 0).toFixed(1)} kn`
         : undefined,
     },
     {
       label: t('nmea.windTrue'),
-      value: current.windTrueDirection !== undefined || current.windTrueAngle !== undefined
-        ? `${(current.windTrueDirection ?? current.windTrueAngle ?? 0).toFixed(0)}°  ·  ${(current.windTrueSpeed ?? 0).toFixed(1)} kn`
+      value: d.windTrueDirection !== undefined
+        ? `${d.windTrueDirection.toFixed(0)}°  ·  ${(d.windTrueSpeed ?? 0).toFixed(1)} kn`
         : undefined,
     },
     {
       label: t('nmea.pressure'),
-      value: current.baroPressureHPa !== undefined
-        ? `${current.baroPressureHPa.toFixed(0)} hPa${current.temperature !== undefined ? `  ·  ${current.temperature.toFixed(1)} °C` : ''}`
+      value: d.baroPressureHPa !== undefined
+        ? `${d.baroPressureHPa.toFixed(0)} hPa${d.temperature !== undefined ? `  ·  ${d.temperature.toFixed(1)} °C` : ''}`
         : undefined,
     },
     {
       label: t('nmea.depth'),
-      value: current.depth !== undefined ? `${current.depth.toFixed(1)} m` : undefined,
+      value: d.depth !== undefined ? `${d.depth.toFixed(1)} m` : undefined,
     },
   ]
-
-  const hasData = log.length > 0
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden text-xs">
