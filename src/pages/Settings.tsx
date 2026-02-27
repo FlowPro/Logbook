@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Update } from '@tauri-apps/plugin-updater'
+
+declare const __APP_VERSION__: string
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
@@ -714,7 +716,7 @@ export function Settings() {
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex justify-between">
               <span>{t('settings.version')}</span>
-              <span className="font-mono">1.0.8</span>
+              <span className="font-mono">{__APP_VERSION__}</span>
             </div>
             <div className="flex justify-between">
               <span>{t('settings.dataStorage')}</span>

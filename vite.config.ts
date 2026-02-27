@@ -4,6 +4,9 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
+import { readFileSync } from 'node:fs'
+
+const { version: appVersion } = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string }
 
 // ── Bridge-Control Plugin ─────────────────────────────────────────────────────
 // Exposes /api/bridge-control/{status,start,stop} on the Vite dev server so
@@ -129,6 +132,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true, // fail instead of silently switching ports (prevents IndexedDB origin mismatch)
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
   },
   resolve: {
     alias: {
