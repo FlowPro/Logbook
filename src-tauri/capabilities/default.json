@@ -13,6 +13,7 @@
     "shell:allow-kill",
     "updater:default",
     "process:default",
+    "dialog:allow-open",
     "dialog:allow-save"
   ]
 }

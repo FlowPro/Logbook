@@ -11,6 +11,9 @@ const IDB_VER = 1
 const STORE = 'handles'
 const KEY_HANDLE = 'backupDir'
 const KEY_LABEL = 'backupDirLabel'
+const KEY_TAURI_PATH = 'backupDirTauriPath'
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
 // Minimal typings for File System Access API
 interface FSWritable {
@@ -162,6 +165,14 @@ export async function setBackupDir(handle: FSDirectoryHandle): Promise<void> {
 export async function clearBackupDir(): Promise<void> {
   await idbDel(KEY_HANDLE)
   await idbDel(KEY_LABEL)
+  await idbDel(KEY_TAURI_PATH)
+}
+
+/** Persist a native folder path (Tauri desktop builds). */
+export async function setTauriBackupPath(folderPath: string): Promise<void> {
+  const label = folderPath.split(/[/\\]/).filter(Boolean).pop() ?? folderPath
+  await idbSet(KEY_TAURI_PATH, folderPath)
+  await idbSet(KEY_LABEL, label)
 }
 
 /**
@@ -171,6 +182,21 @@ export async function clearBackupDir(): Promise<void> {
  */
 export async function saveBackupFile(json: string, filename: string): Promise<void> {
   const zipBlob = await createBackupZip(json)
+
+  // Tauri desktop: write to stored native folder path
+  if (isTauri) {
+    const folderPath = await idbGet<string>(KEY_TAURI_PATH)
+    if (folderPath) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        const bytes = new Uint8Array(await zipBlob.arrayBuffer())
+        await invoke('save_file', { path: `${folderPath}/${filename}`, data: Array.from(bytes) })
+      } catch { /* silent fail – auto-backup should never interrupt */ }
+    }
+    return // no fallback download in Tauri (no folder configured = skip silently)
+  }
+
+  // Browser / PWA: use stored FileSystemDirectoryHandle
   const handle = await getBackupDirHandle()
   if (handle) {
     try {
@@ -200,6 +226,23 @@ export async function saveBackupFile(json: string, filename: string): Promise<vo
  */
 export async function saveBackupFileWithPicker(json: string, filename: string): Promise<void> {
   const zipBlob = await createBackupZip(json)
+
+  // Tauri desktop: use native save-file dialog
+  if (isTauri) {
+    const [{ save }, { invoke }] = await Promise.all([
+      import('@tauri-apps/plugin-dialog'),
+      import('@tauri-apps/api/core'),
+    ])
+    const path = await save({
+      defaultPath: filename,
+      filters: [{ name: 'ZIP Backup', extensions: ['zip'] }],
+    })
+    if (path) {
+      const bytes = new Uint8Array(await zipBlob.arrayBuffer())
+      await invoke('save_file', { path, data: Array.from(bytes) })
+    }
+    return
+  }
 
   // 1) Stored directory handle
   const handle = await getBackupDirHandle()

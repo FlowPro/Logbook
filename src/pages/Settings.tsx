@@ -223,6 +223,17 @@ export function Settings() {
   }
 
   async function handlePickBackupDir() {
+    if (isTauri) {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const { setTauriBackupPath } = await import('../utils/backupDir')
+      const folderPath = await open({ directory: true, multiple: false })
+      if (typeof folderPath === 'string') {
+        await setTauriBackupPath(folderPath)
+        const label = folderPath.split(/[/\\]/).filter(Boolean).pop() ?? folderPath
+        setBackupDirLabelState(label)
+      }
+      return
+    }
     if (!('showDirectoryPicker' in window)) {
       alert(t('settings.backupFolderHint'))
       return
