@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.5] - 2026-02-27
+
+### Fixed
+- Windows App: NMEA-Gerätekonfiguration (Host/Port) geht nach Update nicht mehr verloren — Settings-Formular bevorzugt jetzt Dexie-gespeicherte Werte gegenüber der Bridge-Config (Race-Condition behoben: Bridge antwortete mit Default-IP 192.168.0.1 bevor `applyStoredNmeaConfig()` die korrekte IP hochgeladen hatte)
+- Alle Plattformen: NMEA-Verbindung wird beim App-Start automatisch aufgebaut — `applyStoredNmeaConfig()` wird nun auch aufgerufen wenn die Bridge bereits lief; bestehende korrekte Verbindungen werden dabei nicht unterbrochen
+
+---
+
 ## [1.2.4] - 2026-02-27
 
 ### Fixed

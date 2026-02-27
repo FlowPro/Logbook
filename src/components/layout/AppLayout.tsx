@@ -55,8 +55,11 @@ export function AppLayout() {
     for (let i = 0; i < 20; i++) {
       await new Promise<void>(r => setTimeout(r, 500))
       try {
-        const status = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(1000) }).catch(() => null)
-        if (!status?.ok) continue
+        const res = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(1000) }).catch(() => null)
+        if (!res?.ok) continue
+        const status = await res.json() as { nmeaConnected: boolean; config: { nmea: { host: string; port: number } } }
+        // Skip if bridge is already connected with the correct config — avoid disrupting active connection
+        if (status.nmeaConnected && status.config.nmea.host === host && status.config.nmea.port === port) return
         fetch('http://localhost:3001/api/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -72,7 +75,11 @@ export function AppLayout() {
     bridgeSpawning.current = true
     try {
       const res = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(2000) }).catch(() => null)
-      if (res?.ok) return // already running (external or previous sidecar still alive)
+      if (res?.ok) {
+        // Bridge already running — still apply stored config in case it has stale/default settings
+        applyStoredNmeaConfig()
+        return
+      }
       bridgeChild.current = null
       const { Command } = await import('@tauri-apps/plugin-shell')
       const command = Command.sidecar('binaries/nmea-bridge')

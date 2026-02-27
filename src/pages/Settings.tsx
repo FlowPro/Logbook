@@ -164,7 +164,14 @@ export function Settings() {
         const status = await res.json() as BridgeStatus
         setBridgeStatus(status)
         if (!nmeaFormLoaded.current) {
-          setNmeaForm(status.config.nmea)
+          // Dexie-stored values take priority over bridge config (bridge may still have
+          // default 192.168.0.1 on Windows before applyStoredNmeaConfig() has run)
+          setNmeaForm({
+            host: settings?.nmeaDeviceHost ?? status.config.nmea.host,
+            port: settings?.nmeaDevicePort ?? status.config.nmea.port,
+            protocol: (settings?.nmeaDeviceProtocol ?? status.config.nmea.protocol) as 'tcp' | 'udp',
+            reconnectIntervalMs: status.config.nmea.reconnectIntervalMs,
+          })
           nmeaFormLoaded.current = true
         }
       } catch {
