@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.8] - 2026-02-27
+
+### Fixed
+- Windows: NMEA-Bridge-Sidecar startet nun korrekt — fehlende ACL-Berechtigung `shell:allow-spawn` in `capabilities/default.json` verhinderte `Command.sidecar().spawn()`; bisher war nur `shell:allow-execute` (blocking) eingetragen
+
+---
+
 ## [1.1.7] - 2026-02-27
 
 ### Fixed
