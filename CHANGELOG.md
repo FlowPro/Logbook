@@ -7,6 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.2] - 2026-02-27
+
+### Added
+- NMEA Bridge: Wird in der Tauri-Desktop-App (macOS & Windows) automatisch gestartet (Sidecar via bun compile)
+
+### Fixed
+- macOS: Backup-Ordner wählen öffnet jetzt nativen Finder-Dialog (WKWebView unterstützt keine File System Access API)
+- macOS: Backup ZIP exportieren funktioniert jetzt über nativen Speichern-Dialog
+- Sidebar: Versionsnummer zeigt korrekte App-Version via `__APP_VERSION__`
+
+### Changed
+- NMEA-Einstellungen: URL-Feld entfernt; Bridge startet automatisch beim App-Start wenn NMEA aktiv
+
+---
+
 ## [1.1.1] - 2026-02-27
 
 ### Fixed
