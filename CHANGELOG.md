@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.2.1] - 2026-02-27
+
+### Fixed
+- Windows App: NMEA-Einstellungen speichern schlugen mit «Bridge nicht erreichbar» fehl, obwohl die Bridge lief — `writeFileSync` schlug im read-only App-Verzeichnis (Windows Program Files) still fehl; der Fehler ist nun nicht-fatal, Config wird in-memory aktualisiert und `reconnect()` läuft immer; betrifft nur Persistenz über Neustarts, nicht die aktive Verbindung
+- Alle Plattformen (App & PWA): «Letzte Nachrichten» im NMEA-Debug-Panel zeigte akkumulierte Felder aus allen vorherigen Satztypen statt der tatsächlichen Inhalte des jeweiligen Satzes (`$DBT` zeigte z.B. Lat/Lon/SOG aus vorherigen `$RMC`-Meldungen); Panel zeigt nun die rohe NMEA-Sentence je Eintrag
+
+---
+
 ## [1.2.0] - 2026-02-27
 
 ### Fixed
