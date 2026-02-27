@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 /// Write arbitrary bytes to a user-chosen path (called after the native save dialog).
 #[tauri::command]
 fn save_file(path: String, data: Vec<u8>) -> Result<(), String> {
