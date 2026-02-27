@@ -500,23 +500,9 @@ export function Settings() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                      <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                      {t('settings.bridgeActive')} · {bridgeStatus.wsClients} {bridgeStatus.wsClients === 1 ? 'Client' : 'Clients'}
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <NMEAStatusIndicator connected={stableNmeaConnected} />
-                      {stableNmeaConnected ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={handleNmeaReconnect}>
-                          {t('nmea.reconnect')}
-                        </Button>
-                      ) : (
-                        <Button type="button" size="sm" variant="primary" onClick={handleNmeaConnect}>
-                          {t('common.connect')}
-                        </Button>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                    <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                    {t('settings.bridgeActive')} · {bridgeStatus.wsClients} {bridgeStatus.wsClients === 1 ? 'Client' : 'Clients'}
                   </div>
                 )}
               </div>
@@ -547,6 +533,20 @@ export function Settings() {
                   value={nmeaForm.protocol}
                   onChange={e => setNmeaForm(f => ({ ...f, protocol: e.target.value as 'tcp' | 'udp' }))}
                 />
+                {bridgeStatus !== null && (
+                  <div className="flex items-center justify-between gap-3">
+                    <NMEAStatusIndicator connected={stableNmeaConnected} />
+                    {stableNmeaConnected ? (
+                      <Button type="button" size="sm" variant="secondary" onClick={handleNmeaReconnect}>
+                        {t('nmea.reconnect')}
+                      </Button>
+                    ) : (
+                      <Button type="button" size="sm" variant="primary" onClick={handleNmeaConnect}>
+                        {t('common.connect')}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <div>
                   <Button
                     type="button"
@@ -566,7 +566,10 @@ export function Settings() {
 
               {/* Debug panel – always visible when NMEA enabled */}
               <div className="mt-2">
-                <NMEADebugPanel wsUrl={settings.nmeaBridgeUrl || 'ws://localhost:3001'} />
+                <NMEADebugPanel
+                  wsUrl={settings.nmeaBridgeUrl || 'ws://localhost:3001'}
+                  nmeaConnected={stableNmeaConnected}
+                />
               </div>
             </>
           )}

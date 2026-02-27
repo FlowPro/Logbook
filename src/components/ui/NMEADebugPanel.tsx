@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Wifi, WifiOff, RefreshCw, Trash2 } from 'lucide-react'
+import { RefreshCw, Trash2 } from 'lucide-react'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,10 +63,9 @@ function formatMsg(msg: ParsedMsg): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
+export function NMEADebugPanel({ wsUrl, nmeaConnected }: { wsUrl: string; nmeaConnected?: boolean }) {
   const { t } = useTranslation()
   const [log, setLog] = useState<LogEntry[]>([])
-  const [connected, setConnected] = useState(false)
   const [, forceUpdate] = useState(0)
   const wsRef = useRef<WebSocket | null>(null)
 
@@ -76,7 +75,7 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
     return () => clearInterval(id)
   }, [])
 
-  // WebSocket connection – independent from the main useNMEA hook
+  // WebSocket connection – used only for message logging (connection status comes from prop)
   useEffect(() => {
     let ws: WebSocket
     try {
@@ -85,9 +84,6 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
       return
     }
     wsRef.current = ws
-    ws.onopen  = () => setConnected(true)
-    ws.onclose = () => setConnected(false)
-    ws.onerror = () => setConnected(false)
     ws.onmessage = e => {
       try {
         const msg = JSON.parse(e.data as string) as ParsedMsg
@@ -155,18 +151,7 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
       {/* ── Status bar ── */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <span className="font-semibold text-gray-600 dark:text-gray-300">NMEA Debug</span>
-          <span className="text-gray-300 dark:text-gray-600">|</span>
-          <div className="flex items-center gap-1.5">
-            {connected
-              ? <Wifi className="w-3.5 h-3.5 text-green-500" />
-              : <WifiOff className="w-3.5 h-3.5 text-gray-400" />}
-            <span className={connected
-              ? 'font-medium text-green-600 dark:text-green-400'
-              : 'text-gray-400'}>
-              {connected ? t('nmea.debugConnected') : t('nmea.debugNotConnected')}
-            </span>
-          </div>
+          <span className="font-semibold text-gray-600 dark:text-gray-300">{t('nmea.liveData')}</span>
         </div>
         <div className="flex items-center gap-3">
           {hasData && (
@@ -190,17 +175,17 @@ export function NMEADebugPanel({ wsUrl }: { wsUrl: string }) {
         </div>
       </div>
 
-      {/* ── Waiting state ── */}
-      {!hasData && connected && (
+      {/* ── Empty state ── */}
+      {!hasData && (
         <div className="flex items-center justify-center gap-2 px-3 py-5 text-gray-400">
-          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-          {t('nmea.waitingNmea')}
-        </div>
-      )}
-
-      {!hasData && !connected && (
-        <div className="px-3 py-5 text-center text-gray-400">
-          {t('nmea.noSignal')}
+          {nmeaConnected !== false ? (
+            <>
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              {t('nmea.waitingNmea')}
+            </>
+          ) : (
+            t('nmea.noSignal')
+          )}
         </div>
       )}
 
