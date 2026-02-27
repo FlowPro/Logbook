@@ -176,7 +176,7 @@ export function CrewManagement() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {visibleCrew.map(member => (
             <Card key={member.id} padding={false} className={`flex flex-col${!member.isActive ? ' opacity-60' : ''}`}>
-              <div className="p-4 flex-1">
+              <div className="p-4 flex-1 flex flex-col">
                 <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold text-lg">{member.firstName} {member.lastName}</h3>
@@ -199,7 +199,7 @@ export function CrewManagement() {
                       </div>
                     : <img src={member.passportCopy} alt="Passport" className="mt-3 w-full h-24 object-cover rounded-lg" />
                 )}
-                <div className="mt-3 space-y-1 text-sm">
+                <div className="mt-auto pt-3 space-y-1 text-sm">
                   <div className="flex justify-between text-gray-600 dark:text-gray-400">
                     <span>{t('crew.passportNumber')}</span>
                     <span className="font-mono">{member.passportNumber || '—'}</span>
