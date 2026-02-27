@@ -9,7 +9,7 @@ interface NMEAImportButtonProps {
   onImport: (data: NMEAData) => void
 }
 
-/** Custom NMEA icon: signal arcs + downward arrow — conveys "receive from NMEA device" */
+/** Custom NMEA icon: signal arcs + dot + downward arrow — conveys "receive from NMEA device" */
 function NMEAIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -19,13 +19,16 @@ function NMEAIcon({ className }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      {/* Signal arcs (top) */}
-      <path d="M5.5 5.5a3.5 3.5 0 015 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M3.5 3.5a6 6 0 019 0"    stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* Inner arc */}
+      <path d="M5.8 6.2a3 3 0 014.4 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* Outer arc */}
+      <path d="M3.5 4a6 6 0 019 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      {/* Centre dot (antenna tip) */}
+      <circle cx="8" cy="7.5" r="0.9" fill="currentColor" />
       {/* Vertical stem */}
-      <line x1="8" y1="7" x2="8" y2="11.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line x1="8" y1="8.4" x2="8" y2="12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       {/* Downward arrow head */}
-      <polyline points="5.5,9.5 8,12 10.5,9.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      <polyline points="5.8,10.2 8,12.5 10.2,10.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -37,12 +40,16 @@ export function NMEAImportButton({ connected, data, onImport }: NMEAImportButton
     data.windTrueSpeed !== undefined || data.baroPressureHPa !== undefined ||
     data.temperature !== undefined
 
+  const iconColor = connected && hasAny
+    ? 'text-green-500'
+    : 'text-red-400'
+
   return (
     <Button
       type="button"
       variant="secondary"
       size="sm"
-      icon={<NMEAIcon className="w-3.5 h-3.5" />}
+      icon={<NMEAIcon className={`w-4 h-4 ${iconColor}`} />}
       onClick={() => onImport(data)}
       disabled={!connected || !hasAny}
     >

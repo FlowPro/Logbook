@@ -317,6 +317,7 @@ export function Maintenance() {
   const [editingId,     setEditingId]     = useState<number | null>(null)
   const [modalStatus,   setModalStatus]   = useState<MaintenanceStatus>('planned')
   const [saving,        setSaving]        = useState(false)
+  const [saved,         setSaved]         = useState(false)
   const [filterCat,     setFilterCat]     = useState('all')
   const [filterYear,    setFilterYear]    = useState('all')
   const [showArchive,   setShowArchive]   = useState(false)
@@ -518,7 +519,8 @@ export function Maintenance() {
         await db.maintenance.add({ ...base, createdAt: now })
         toast.success(t('maintenance.taskAdded'))
       }
-      setModalOpen(false)
+      setSaved(true)
+      setTimeout(() => { setSaved(false); setModalOpen(false) }, 500)
     } finally {
       setSaving(false)
     }
@@ -780,7 +782,7 @@ export function Maintenance() {
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-              {t('common.save')}
+              {saved ? t('common.saved') : t('common.save')}
             </Button>
           </>
         }

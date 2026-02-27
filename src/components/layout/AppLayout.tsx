@@ -44,6 +44,29 @@ export function AppLayout() {
   const bridgeChild = useRef<ChildHandle | null>(null)
   const bridgeSpawning = useRef(false)
 
+  // After the bridge sidecar spawns, wait for it to accept connections then apply the
+  // NMEA device config stored in Dexie (host/port/protocol). This survives app restarts
+  // because the bun-compiled bridge binary cannot reliably write config.json to disk.
+  async function applyStoredNmeaConfig() {
+    if (!settings?.nmeaDeviceHost) return
+    const host = settings.nmeaDeviceHost
+    const port = settings.nmeaDevicePort ?? 10110
+    const protocol = settings.nmeaDeviceProtocol ?? 'tcp'
+    for (let i = 0; i < 20; i++) {
+      await new Promise<void>(r => setTimeout(r, 500))
+      try {
+        const status = await fetch('http://localhost:3001/api/status', { signal: AbortSignal.timeout(1000) }).catch(() => null)
+        if (!status?.ok) continue
+        fetch('http://localhost:3001/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, port, protocol }),
+        }).catch(() => {})
+        return
+      } catch { /* not ready yet */ }
+    }
+  }
+
   async function spawnBridge() {
     if (bridgeSpawning.current) return
     bridgeSpawning.current = true
@@ -63,6 +86,7 @@ export function AppLayout() {
       })
       const child = await command.spawn()
       bridgeChild.current = child
+      applyStoredNmeaConfig() // fire-and-forget: restore device config after bridge starts
     } catch (e) {
       console.error('[sidecar] Failed to start NMEA bridge:', e)
       try {

@@ -279,6 +279,10 @@ export interface AppSettings {
   // NMEA bridge connection
   nmeaEnabled?: boolean
   nmeaBridgeUrl?: string // e.g. 'ws://localhost:3001'
+  // NMEA device config – persisted here so it survives bridge restarts
+  nmeaDeviceHost?: string
+  nmeaDevicePort?: number
+  nmeaDeviceProtocol?: 'tcp' | 'udp'
   updatedAt: string
 }
 

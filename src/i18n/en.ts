@@ -20,6 +20,7 @@ const en = {
     // Common
     common: {
       save: 'Save',
+      saved: 'Saved!',
       cancel: 'Cancel',
       delete: 'Delete',
       edit: 'Edit',
@@ -88,6 +89,8 @@ const en = {
       overdueDays: 'Overdue {{count}}d',
       dueTodayLabel: 'Due today',
       dueDays: 'Due in {{count}}d',
+      vesselStatus: 'Vessel Status',
+      vesselStatusEmpty: 'Log engine hours, fuel & water in a log entry',
     },
 
     // Ship data
@@ -464,6 +467,7 @@ const en = {
       logEntries: 'Log entries',
       crewMembers: 'Crew members',
       passages: 'Passages',
+      totalDistance: 'Total distance',
     },
 
     // Settings

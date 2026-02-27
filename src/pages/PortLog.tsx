@@ -537,6 +537,7 @@ export function PortLog() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
   const [filterYear, setFilterYear] = useState<string>('all')
   const [lockingYear, setLockingYear] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'passage' | 'entry'; id: number; label: string } | null>(null)
@@ -640,7 +641,8 @@ export function PortLog() {
       } else {
         await db.passages.add({ ...saveData, createdAt: now, updatedAt: now })
       }
-      setModalOpen(false)
+      setSaved(true)
+      setTimeout(() => { setSaved(false); setModalOpen(false) }, 500)
     } finally {
       setSaving(false)
     }
@@ -802,7 +804,7 @@ export function PortLog() {
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-              {t('common.save')}
+              {saved ? t('common.saved') : t('common.save')}
             </Button>
           </>
         }

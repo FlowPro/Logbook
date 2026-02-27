@@ -1,3 +1,4 @@
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -15,6 +16,10 @@ import {
   GitCommitHorizontal,
   Wrench,
   AlertTriangle,
+  Gauge,
+  Fuel,
+  Droplets,
+  CheckCircle,
 } from 'lucide-react'
 import type { MooringStatus, MaintenanceEntry } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
@@ -69,6 +74,16 @@ export function Dashboard() {
 
   const lastEntry = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().first()
+  )
+  const lastEntryWithFuel = useLiveQuery(() =>
+    db.logEntries.orderBy('[date+time]').reverse()
+      .filter(e => e.fuelLevelL != null)
+      .first()
+  )
+  const lastEntryWithWater = useLiveQuery(() =>
+    db.logEntries.orderBy('[date+time]').reverse()
+      .filter(e => e.waterLevelL != null)
+      .first()
   )
   const recentEntries = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().limit(5).toArray()
@@ -190,163 +205,234 @@ export function Dashboard() {
           value={String(activeCrew?.length ?? 0)}
           color="purple"
         />
-        <StatCard
-          icon={<Anchor className="w-5 h-5" />}
-          label={ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
-          value={ship?.name ?? '—'}
-          color="orange"
-          small
-        />
+        <Link to="/ship" className="block">
+          <div className="card p-4 hover:shadow-md transition-shadow">
+            <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
+              <Anchor className="w-5 h-5" />
+            </div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+              {ship?.name ?? '—'}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
+            </div>
+          </div>
+        </Link>
       </div>
 
-      {/* Maintenance alerts (if any due within 14 days) */}
-      {maintenanceAlerts.length > 0 && (
-        <Card>
-          <CardHeader
-            title={t('dashboard.maintenanceAlerts')}
-            icon={overdueCount > 0
-              ? <AlertTriangle className="w-4 h-4 text-red-500" />
-              : <Wrench className="w-4 h-4" />
-            }
-            action={
-              <Link to="/maintenance" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                {t('nav.maintenance')} <ArrowRight className="w-3 h-3" />
-              </Link>
-            }
-          />
-          <ul className="space-y-2">
-            {maintenanceAlerts.slice(0, 5).map(task => (
-              <li
-                key={task.id}
-                onClick={() => navigate('/maintenance', { state: { editId: task.id } })}
-                className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
-              >
-                <Wrench className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                <span className="flex-1 text-sm font-medium truncate">
-                  {task.description || t('maintenance.noTitle')}
-                </span>
-                <span className="text-xs text-gray-400">
-                  {t(`maintenance.categories.${task.category}`)}
-                </span>
-                {task.dueDate
-                  ? renderDueLabel(task.dueDate)
-                  : renderEngineHoursLabel(task)}
-              </li>
-            ))}
-          </ul>
-          {maintenanceAlerts.length > 5 && (
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              +{maintenanceAlerts.length - 5} {t('nav.maintenance').toLowerCase()}
-            </p>
-          )}
-        </Card>
-      )}
+      {/* Main content: 2-row × 3-col grid
+            Row 1 (auto):  Maintenance (col 1-2)  |  Bordstatus (col 3)
+            Row 2 (1fr):   Last Entry  (col 1-2)  |  Crew       (col 3)
+          Cards in the same row are forced to equal height via CSS grid stretch + h-full. */}
+      <div className="grid md:grid-cols-3 md:grid-rows-[auto_1fr] gap-6">
 
-      {/* Last entry + Quick stats */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {lastEntry ? (
-          <Card>
+        {/* ── Row 1, left (col 1-2): Maintenance alerts ── */}
+        <div className="md:col-span-2 md:row-start-1">
+          <Card className="h-full">
             <CardHeader
-              title={t('dashboard.lastEntry')}
-              icon={<BookOpen className="w-4 h-4" />}
+              title={t('dashboard.maintenanceAlerts')}
+              icon={overdueCount > 0
+                ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                : <Wrench className="w-4 h-4" />
+              }
               action={
-                <Link to="/logbook" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                  {t('nav.logbook')} <ArrowRight className="w-3 h-3" />
+                <Link to="/maintenance" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.maintenance')} <ArrowRight className="w-3 h-3" />
                 </Link>
               }
             />
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.date')}</span>
-                <span className="font-mono text-sm font-medium">
-                  {lastEntry.date} {lastEntry.time} UTC
-                </span>
+            {maintenanceAlerts.length > 0 ? (
+              <>
+                <ul className="space-y-2">
+                  {maintenanceAlerts.slice(0, 5).map(task => (
+                    <li
+                      key={task.id}
+                      onClick={() => navigate('/maintenance', { state: { editId: task.id } })}
+                      className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+                    >
+                      <Wrench className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="flex-1 text-sm font-medium truncate">
+                        {task.description || t('maintenance.noTitle')}
+                      </span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {t(`maintenance.categories.${task.category}`)}
+                      </span>
+                      {task.dueDate
+                        ? renderDueLabel(task.dueDate)
+                        : renderEngineHoursLabel(task)}
+                    </li>
+                  ))}
+                </ul>
+                {maintenanceAlerts.length > 5 && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    +{maintenanceAlerts.length - 5} {t('nav.maintenance').toLowerCase()}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noMaintenanceAlerts')}</p>
+                <Link to="/maintenance" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
+                  {t('nav.maintenance')} <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.sections.position')}</span>
-                <span className="font-mono text-sm">
-                  {formatCoordinate(lastEntry.latitude)} {formatCoordinate(lastEntry.longitude)}
-                </span>
+            )}
+          </Card>
+        </div>
+
+        {/* ── Row 1, right (col 3): Bordstatus ── */}
+        <div className="md:col-start-3 md:row-start-1">
+          <Card className="h-full">
+            <CardHeader
+              title={t('dashboard.vesselStatus')}
+              icon={<Gauge className="w-4 h-4" />}
+            />
+            {currentEngineHours === 0 && lastEntryWithFuel == null && lastEntryWithWater == null ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Gauge className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500">{t('dashboard.vesselStatusEmpty')}</p>
+                <Link to="/ports" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
+                  {t('logEntry.newEntry')} <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.sog')}</span>
-                <span className="font-mono text-sm font-medium">{lastEntry.speedOverGround != null ? `${lastEntry.speedOverGround.toFixed(1)} kn` : '—'}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.distanceSinceLast')}</span>
-                <span className="font-mono text-sm">{lastEntry.distanceSinceLastEntry.toFixed(1)} nm</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.windBeaufort')}</span>
-                <Badge variant="beaufort" beaufortForce={lastEntry.windBeaufort} />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.baroPressure')}</span>
-                <span className="font-mono text-sm">{lastEntry.baroPressureHPa} hPa</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">{t('logEntry.mooringStatus')}</span>
-                <div className="flex items-center gap-1.5">
-                  <MooringIcon status={lastEntry.mooringStatus} />
-                  <span className="font-mono text-sm">
-                    {t(`logEntry.mooringStatuses.${lastEntry.mooringStatus ?? 'underway'}`)}
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                    <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+                    {t('dashboard.engineHours')}
+                  </span>
+                  <span className="font-mono text-sm font-semibold">
+                    {currentEngineHours > 0 ? `${fmtNum(currentEngineHours, 1)} h` : '—'}
                   </span>
                 </div>
+                <TankRow
+                  icon={<Fuel className="w-3.5 h-3.5 flex-shrink-0" />}
+                  label={t('logEntry.fuelLevel')}
+                  pct={lastEntryWithFuel?.fuelLevelL ?? null}
+                  capacity={ship?.fuelCapacityL}
+                />
+                <TankRow
+                  icon={<Droplets className="w-3.5 h-3.5 flex-shrink-0" />}
+                  label={t('logEntry.waterLevel')}
+                  pct={lastEntryWithWater?.waterLevelL ?? null}
+                  capacity={ship?.waterCapacityL}
+                />
               </div>
-              {lastEntry.notes && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 italic border-t pt-2 mt-2 border-gray-100 dark:border-gray-700">
-                  "{lastEntry.notes}"
-                </p>
-              )}
-            </div>
+            )}
           </Card>
-        ) : (
-          <Card>
-            <div className="text-center py-8">
-              <BookOpen className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-500 dark:text-gray-400 mb-4">{t('dashboard.noEntries')}</p>
-              <Link to="/ports">
-                <Button size="sm">{t('dashboard.startLogging')}</Button>
-              </Link>
-            </div>
-          </Card>
-        )}
+        </div>
 
-        {/* Crew on board */}
-        <Card>
-          <CardHeader
-            title={t('dashboard.crewOnBoard')}
-            icon={<Users className="w-4 h-4" />}
-            action={
-              <Link to="/crew" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                {t('nav.crew')} <ArrowRight className="w-3 h-3" />
-              </Link>
-            }
-          />
-          {activeCrew && activeCrew.length > 0 ? (
-            <ul className="space-y-2">
-              {activeCrew.map(m => (
-                <li key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700">
-                  <div>
-                    <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
-                    <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
+        {/* ── Row 2, left (col 1-2): Last log entry ── */}
+        <div className="md:col-span-2 md:row-start-2">
+          {lastEntry ? (
+            <Card className="h-full">
+              <CardHeader
+                title={t('dashboard.lastEntry')}
+                icon={<BookOpen className="w-4 h-4" />}
+                action={
+                  <Link to="/logbook" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                    {t('nav.logbook')} <ArrowRight className="w-3 h-3" />
+                  </Link>
+                }
+              />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.date')}</span>
+                  <span className="font-mono text-sm font-medium">
+                    {lastEntry.date} {lastEntry.time} UTC
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.sections.position')}</span>
+                  <span className="font-mono text-sm">
+                    {formatCoordinate(lastEntry.latitude)} {formatCoordinate(lastEntry.longitude)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.sog')}</span>
+                  <span className="font-mono text-sm font-medium">{lastEntry.speedOverGround != null ? `${lastEntry.speedOverGround.toFixed(1)} kn` : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.distanceSinceLast')}</span>
+                  <span className="font-mono text-sm">{lastEntry.distanceSinceLastEntry.toFixed(1)} nm</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.windBeaufort')}</span>
+                  <Badge variant="beaufort" beaufortForce={lastEntry.windBeaufort} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.baroPressure')}</span>
+                  <span className="font-mono text-sm">{lastEntry.baroPressureHPa} hPa</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">{t('logEntry.mooringStatus')}</span>
+                  <div className="flex items-center gap-1.5">
+                    <MooringIcon status={lastEntry.mooringStatus} />
+                    <span className="font-mono text-sm">
+                      {t(`logEntry.mooringStatuses.${lastEntry.mooringStatus ?? 'underway'}`)}
+                    </span>
                   </div>
-                  <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
-                    {t(`crew.roles.${m.role}`)}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
+                </div>
+                {lastEntry.notes && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 italic border-t pt-2 mt-2 border-gray-100 dark:border-gray-700">
+                    "{lastEntry.notes}"
+                  </p>
+                )}
+              </div>
+            </Card>
           ) : (
-            <div className="text-center py-6">
-              <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">{t('crew.noCrewMembers')}</p>
-              <Link to="/crew" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-                {t('crew.addMember')}
-              </Link>
-            </div>
+            <Card className="h-full">
+              <div className="text-center py-8">
+                <BookOpen className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-500 dark:text-gray-400 mb-4">{t('dashboard.noEntries')}</p>
+                <Link to="/ports">
+                  <Button size="sm">{t('dashboard.startLogging')}</Button>
+                </Link>
+              </div>
+            </Card>
           )}
-        </Card>
+        </div>
+
+        {/* ── Row 2, right (col 3): Crew ── */}
+        <div className="md:col-start-3 md:row-start-2">
+          <Card className="h-full">
+            <CardHeader
+              title={t('dashboard.crewOnBoard')}
+              icon={<Users className="w-4 h-4" />}
+              action={
+                <Link to="/crew" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.crew')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            />
+            {activeCrew && activeCrew.length > 0 ? (
+              <ul className="space-y-2">
+                {activeCrew.map(m => (
+                  <li key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700">
+                    <div>
+                      <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
+                      <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
+                    </div>
+                    <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
+                      {t(`crew.roles.${m.role}`)}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center py-6">
+                <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">{t('crew.noCrewMembers')}</p>
+                <Link to="/crew" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+                  {t('crew.addMember')}
+                </Link>
+              </div>
+            )}
+          </Card>
+        </div>
+
       </div>
 
       {/* Recent entries list */}
@@ -466,6 +552,50 @@ interface StatCardProps {
   value: string
   color: 'blue' | 'green' | 'purple' | 'orange'
   small?: boolean
+}
+
+interface TankRowProps {
+  icon: React.ReactNode
+  label: string
+  pct: number | null | undefined  // 0–100 as stored in LogEntry
+  capacity?: number               // litres from ship profile
+}
+
+function TankRow({ icon, label, pct, capacity }: TankRowProps) {
+  if (pct == null) {
+    return (
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-1.5 text-sm text-gray-500">
+          {icon}
+          {label}
+        </span>
+        <span className="font-mono text-sm font-semibold text-gray-300 dark:text-gray-600">—</span>
+      </div>
+    )
+  }
+  const litres = capacity && capacity > 0 ? Math.round(pct / 100 * capacity) : null
+  const barColor = pct <= 20 ? 'bg-red-500' : pct <= 40 ? 'bg-orange-400' : 'bg-green-500'
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="flex items-center gap-1.5 text-sm text-gray-500">
+          {icon}
+          {label}
+        </span>
+        <span className="font-mono text-sm font-semibold">
+          {litres != null
+            ? `${litres} L / ${Math.round(capacity!)} L`
+            : `${Math.round(pct)} %`}
+        </span>
+      </div>
+      <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${barColor} rounded-full transition-all`}
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 function StatCard({ icon, label, value, color, small }: StatCardProps) {

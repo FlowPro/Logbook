@@ -67,6 +67,7 @@ export function CrewManagement() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [passportCopy, setPassportCopy] = useState<string | undefined>()
   const [saving, setSaving] = useState(false)
+  const [saved,  setSaved]  = useState(false)
   const [showInactive, setShowInactive] = useState(false)
 
   const crew = useLiveQuery(() => db.crew.toArray())
@@ -133,7 +134,8 @@ export function CrewManagement() {
       } else {
         await db.crew.add({ ...memberData, createdAt: now, updatedAt: now })
       }
-      setModalOpen(false)
+      setSaved(true)
+      setTimeout(() => { setSaved(false); setModalOpen(false) }, 500)
     } finally {
       setSaving(false)
     }
@@ -272,7 +274,7 @@ export function CrewManagement() {
           <>
             <Button variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
             <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-              {t('common.save')}
+              {saved ? t('common.saved') : t('common.save')}
             </Button>
           </>
         }

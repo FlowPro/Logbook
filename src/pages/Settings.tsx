@@ -85,6 +85,20 @@ export function Settings() {
     host: '192.168.0.1', port: 10110, protocol: 'tcp' as 'tcp' | 'udp', reconnectIntervalMs: 5000,
   })
   const nmeaFormLoaded = useRef(false)
+
+  // Pre-fill form from Dexie settings when the bridge hasn't responded yet
+  // (e.g. fresh app start on Windows before sidecar is ready)
+  useEffect(() => {
+    if (nmeaFormLoaded.current) return
+    if (!settings?.nmeaDeviceHost) return
+    setNmeaForm(f => ({
+      ...f,
+      host: settings.nmeaDeviceHost!,
+      port: settings.nmeaDevicePort ?? f.port,
+      protocol: settings.nmeaDeviceProtocol ?? f.protocol,
+    }))
+  }, [settings?.nmeaDeviceHost, settings?.nmeaDevicePort, settings?.nmeaDeviceProtocol])
+
   const [nmeaSaving, setNmeaSaving] = useState(false)
   const [nmeaSaveError, setNmeaSaveError] = useState('')
 
@@ -319,6 +333,12 @@ export function Settings() {
         body: JSON.stringify(nmeaForm),
       })
       if (!res.ok) throw new Error('server error')
+      // Persist device config to Dexie so the sidecar can restore it on next app start
+      await updateSettings({
+        nmeaDeviceHost: nmeaForm.host,
+        nmeaDevicePort: nmeaForm.port,
+        nmeaDeviceProtocol: nmeaForm.protocol,
+      })
       nmeaFormLoaded.current = false
     } catch {
       setNmeaSaveError(t('settings.nmeaSaveError'))

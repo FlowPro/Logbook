@@ -20,6 +20,7 @@ const de = {
     // Common
     common: {
       save: 'Speichern',
+      saved: 'Gespeichert!',
       cancel: 'Abbrechen',
       delete: 'Löschen',
       edit: 'Bearbeiten',
@@ -88,6 +89,8 @@ const de = {
       overdueDays: '{{count}}d überfällig',
       dueTodayLabel: 'Heute fällig',
       dueDays: 'In {{count}}d fällig',
+      vesselStatus: 'Bordstatus',
+      vesselStatusEmpty: 'Motorstunden, Diesel & Wasser im Logeintrag erfassen',
     },
 
     // Ship data
@@ -461,6 +464,7 @@ const de = {
       logEntries: 'Logeinträge',
       crewMembers: 'Crew-Mitglieder',
       passages: 'Passagen',
+      totalDistance: 'Gesamtdistanz',
     },
 
     // Settings

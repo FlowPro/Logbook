@@ -33,6 +33,11 @@ export function Export() {
     db.passages.orderBy('departureDate').reverse().first()
   )
 
+  const totalDistance = useMemo(() => {
+    if (!entries?.length) return 0
+    return Math.round(entries.reduce((sum, e) => sum + (e.distanceSinceLastEntry ?? 0), 0))
+  }, [entries])
+
   // Derive available years from passage departure dates
   const availableYears = useMemo(() => {
     if (!passages?.length) return []
@@ -178,22 +183,30 @@ export function Export() {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {exportCards.map(card => (
-            <Card key={card.id} className="h-full">
-              <div className="flex items-start gap-4 h-full">
-                <div className={`p-3 rounded-xl bg-${card.color}-50 dark:bg-${card.color}-950 text-${card.color}-600 dark:text-${card.color}-400 flex-shrink-0`}>
+            <Card key={card.id} className="h-full flex flex-col">
+              <div className="flex gap-4 flex-1">
+                <div className={`p-3 rounded-xl bg-${card.color}-50 dark:bg-${card.color}-950 text-${card.color}-600 dark:text-${card.color}-400 flex-shrink-0 self-start`}>
                   {card.icon}
                 </div>
-                <div className="flex-1 min-w-0 flex flex-col h-full">
-                  <div className="flex-1">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  {/* Description — top, natural height */}
+                  <div>
                     <h3 className="font-semibold">{card.title}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{card.description}</p>
+                  </div>
+
+                  {/* Spacer — pushes controls + button to the bottom */}
+                  <div className="flex-1" />
+
+                  {/* Controls + Button — always anchored at the bottom */}
+                  <div>
                     {card.id === 'logbook' && availableYears.length > 1 && (
-                      <div className="mt-2">
-                        <label className="text-xs text-gray-500">{t('export.yearSeason')}</label>
+                      <div className="mb-3">
+                        <label className="label">{t('export.yearSeason')}</label>
                         <select
                           value={logbookYear}
                           onChange={e => setLogbookYear(e.target.value)}
-                          className="input text-xs py-1 block mt-0.5"
+                          className="input appearance-none"
                         >
                           <option value="all">{t('export.allYears', { count: entries?.length ?? 0 })}</option>
                           {availableYears.map(y => (
@@ -205,12 +218,12 @@ export function Export() {
                       </div>
                     )}
                     {(card.id === 'crew' || card.id === 'customs') && passages && passages.length > 0 && (
-                      <div className="mt-2">
-                        <label className="text-xs text-gray-500">{t('export.passage')}</label>
+                      <div className="mb-3">
+                        <label className="label">{t('export.passage')}</label>
                         <select
                           value={selectedPassageId ?? ''}
                           onChange={e => setSelectedPassageId(e.target.value ? Number(e.target.value) : null)}
-                          className="input text-xs py-1 block mt-0.5"
+                          className="input appearance-none"
                         >
                           {passages.map(p => (
                             <option key={p.id} value={p.id}>
@@ -220,18 +233,18 @@ export function Export() {
                         </select>
                       </div>
                     )}
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      className="w-full"
+                      onClick={card.action}
+                      disabled={card.disabled}
+                      loading={generating === card.id}
+                      icon={generating === card.id ? undefined : <Download className="w-4 h-4" />}
+                    >
+                      {generating === card.id ? t('export.generating') : t('export.generatePdf')}
+                    </Button>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    className="mt-3"
-                    onClick={card.action}
-                    disabled={card.disabled}
-                    loading={generating === card.id}
-                    icon={generating === card.id ? undefined : <Download className="w-4 h-4" />}
-                  >
-                    {generating === card.id ? t('export.generating') : t('export.generatePdf')}
-                  </Button>
                 </div>
               </div>
             </Card>
@@ -247,6 +260,7 @@ export function Export() {
             { label: t('export.logEntries'), value: entries?.length ?? 0 },
             { label: t('export.crewMembers'), value: crew?.length ?? 0 },
             { label: t('export.passages'), value: passages?.length ?? 0 },
+            { label: t('export.totalDistance'), value: `${totalDistance.toLocaleString()} nm` },
           ].map(item => (
             <div key={item.label} className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{item.value}</div>

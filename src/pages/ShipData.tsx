@@ -113,7 +113,7 @@ export function ShipData() {
             </Button>
           )}
           <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-            {saved ? 'Gespeichert!' : t('common.save')}
+            {saved ? t('common.saved') : t('common.save')}
           </Button>
         </div>
       </div>
@@ -149,10 +149,9 @@ export function ShipData() {
                 <CountrySelect label={t('ship.registrationCountry')} valueType="name" value={field.value} onChange={field.onChange} onBlur={field.onBlur} />
               )} />
             </div>
-            <div className={r3}>
+            <div className={r2}>
               <Input label={t('ship.mmsi')} {...register('mmsi')} />
               <Input label={t('ship.callSign')} {...register('callSign')} />
-              <Input label={t('ship.imoNumber')} {...register('imoNumber')} />
             </div>
           </div>
         </Card>
@@ -223,7 +222,9 @@ export function ShipData() {
         </Card>
 
         <div className="flex justify-end">
-          <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>{t('common.save')}</Button>
+          <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>
+            {saved ? t('common.saved') : t('common.save')}
+          </Button>
         </div>
       </form>
     </div>
