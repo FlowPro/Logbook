@@ -13,6 +13,7 @@ import { Settings } from './pages/Settings'
 import { Emergency } from './pages/Emergency'
 import { Safety } from './pages/Safety'
 import { Search } from './pages/Search'
+import { MapView } from './pages/MapView'
 import { db, initSettings } from './db/database'
 
 function App() {
@@ -41,6 +42,7 @@ function App() {
           <Route path="emergency" element={<Emergency />} />
           <Route path="safety" element={<Safety />} />
           <Route path="search" element={<Search />} />
+          <Route path="map" element={<MapView />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

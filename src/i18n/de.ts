@@ -15,6 +15,7 @@ const de = {
       emergency: 'Notfall',
       safety: 'Sicherheit',
       search: 'Suche',
+      map: 'Karte',
     },
 
     // Common
@@ -318,6 +319,18 @@ const de = {
       noData: 'Keine Daten für den gewählten Zeitraum',
       selectPassage: 'Passage auswählen',
       noPassages: 'Noch keine Passagen erfasst.',
+    },
+
+    // Map
+    map: {
+      filterAll:     'Alle',
+      filterPassage: 'Passage',
+      filterYear:    'Jahr',
+      windToggle:    'Wind',
+      legendSail:    'Segel',
+      legendMotor:   'Motor',
+      legendMooring: 'Liegeplatz',
+      noData:        'Keine Logeinträge mit Koordinaten für den gewählten Filter.',
     },
 
     // Port Log

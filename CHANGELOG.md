@@ -7,6 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.3.0] - 2026-02-27
+
+### Added
+- Kartenansicht: Interaktive Karte mit allen Logbucheinträgen, die GPS-Koordinaten haben (nicht nur Passage-Start/-Ende)
+- Kartenansicht: Farbige Punkte je Antriebsart — blau (Segel), orange (Motor), türkis-Töne für Liegeplätze (Anker / Marina / Boje / Längsseits)
+- Kartenansicht: Klick auf Punkt öffnet Popup mit Datum, Uhrzeit, Position, Kurs, SOG und Antrieb/Liegeplatz
+- Kartenansicht: Filter nach Passage oder Jahr; Routenlinien je Passage
+- Kartenansicht: Darkmode folgt der globalen App-Einstellung
+
+---
+
 ## [1.2.6] - 2026-02-27
 
 ### Added
