@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.7] - 2026-02-27
+
+### Fixed
+- macOS: NMEA-Badge flackert nicht mehr gelb — Bridge sendet alle 5 s einen JSON-Heartbeat (nur wenn NMEA-TCP verbunden), der `updatedAt` im Browser aktuell hält; `ws.ping()` (Protocol-Level) aktualisiert `updatedAt` nicht und war daher wirkungslos für den Badge
+- NMEA-Badge: Stale-Schwelle von 30 s auf 60 s erhöht (Tooltip angepasst)
+
+---
+
 ## [1.1.6] - 2026-02-27
 
 ### Fixed

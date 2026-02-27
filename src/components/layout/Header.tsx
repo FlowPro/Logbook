@@ -27,8 +27,8 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
     return () => { if (tickRef.current) clearInterval(tickRef.current) }
   }, [settings?.nmeaEnabled])
 
-  // Green only when WS is connected AND NMEA data was received within the last 30 seconds
-  const DATA_STALE_MS = 30 * 1000
+  // Green only when WS is connected AND NMEA heartbeat/data received within the last 60 seconds
+  const DATA_STALE_MS = 60 * 1000
   const dataFresh = nmeaData.updatedAt != null && (Date.now() - nmeaData.updatedAt + tick * 0) < DATA_STALE_MS
   const nmeaActive = wsConnected && dataFresh
   // "connecting": WS is open but no data yet (first connection, NMEA device not yet sending)
@@ -104,7 +104,7 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
               {([
                 { dot: 'bg-green-500',              label: 'Grün',  desc: 'NMEA aktiv – Daten empfangen',         active: nmeaActive },
                 { dot: 'bg-blue-400 animate-pulse', label: 'Blau',  desc: 'Verbinde – warte auf NMEA-Gerät',      active: nmeaConnecting },
-                { dot: 'bg-amber-400',              label: 'Gelb',  desc: 'Kein Datenstrom (> 30 s)',             active: wsConnected && !nmeaActive && !nmeaConnecting },
+                { dot: 'bg-amber-400',              label: 'Gelb',  desc: 'Kein Datenstrom (> 60 s)',             active: wsConnected && !nmeaActive && !nmeaConnecting },
                 { dot: 'bg-gray-400',               label: 'Grau',  desc: 'Bridge nicht verbunden',               active: !wsConnected },
               ] as const).map(({ dot, label, desc, active }) => (
                 <div key={label} className={`flex items-center gap-2 rounded-lg px-1.5 py-1 text-xs ${active ? 'bg-white/10' : ''}`}>

@@ -159,8 +159,19 @@ wss.on('connection', ws => {
     if (ws.readyState === ws.OPEN) ws.ping()
   }, 20_000)
 
+  // Heartbeat: data-level message every 5 s while NMEA TCP is up.
+  // ws.ping() is protocol-level only and does NOT trigger onmessage in the browser,
+  // so the browser badge updatedAt would never refresh without this.
+  // Stops automatically when nmeaConnected is false → badge turns amber correctly.
+  const heartbeat = setInterval(() => {
+    if (nmeaConnected && ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify({ _heartbeat: 1 }))
+    }
+  }, 5_000)
+
   ws.on('close', () => {
     clearInterval(keepAlive)
+    clearInterval(heartbeat)
     clients.delete(ws)
     console.log(`[nmea] Browser client disconnected (${clients.size} remaining)`)
   })

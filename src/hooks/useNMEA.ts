@@ -54,7 +54,12 @@ export function useNMEA(wsUrl?: string): { connected: boolean; data: NMEAData } 
     ws.onmessage = event => {
       try {
         const msg = JSON.parse(event.data as string) as Record<string, unknown>
-        setData(prev => ({ ...prev, ...msg, updatedAt: Date.now() }))
+        if (msg._heartbeat) {
+          // Heartbeat from bridge — only refresh timestamp, don't pollute data
+          setData(prev => ({ ...prev, updatedAt: Date.now() }))
+        } else {
+          setData(prev => ({ ...prev, ...msg, updatedAt: Date.now() }))
+        }
       } catch {
         // Malformed message — ignore
       }
