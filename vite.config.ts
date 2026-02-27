@@ -76,6 +76,11 @@ export default defineConfig({
     react(),
     bridgeControlPlugin(),
     VitePWA({
+      // In Tauri builds (TAURI_PLATFORM is set by tauri-cli during beforeBuildCommand),
+      // generate a self-destroying SW that unregisters itself on first load.
+      // This clears any previously cached assets from WebView2's %AppData% profile,
+      // which would otherwise serve stale JS across reinstalls.
+      selfDestroying: !!process.env.TAURI_PLATFORM,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {

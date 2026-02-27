@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.1.3] - 2026-02-27
+
+### Fixed
+- Tauri (Windows/macOS): NMEA-Bridge-Sidecar startet nun korrekt — PWA Service Worker im WebView2/WKWebView verursachte stale JS-Cache über Reinstalls hinweg; Tauri-Builds generieren jetzt einen Self-Destroying Service Worker
+
+---
+
 ## [1.1.2] - 2026-02-27
 
 ### Added
