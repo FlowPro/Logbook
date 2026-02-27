@@ -106,7 +106,12 @@ function handleHttp(req: http.IncomingMessage, res: http.ServerResponse): void {
       try {
         const patch = JSON.parse(body) as Partial<Config['nmea']>
         Object.assign(cfg.nmea, patch)
-        writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8')
+        // Persist config — non-fatal: app directory may be read-only (e.g. Windows Program Files)
+        try {
+          writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf-8')
+        } catch {
+          console.warn('[nmea] Could not persist config.json — config updated in-memory only')
+        }
         console.log('[nmea] Config updated:', cfg.nmea)
         reconnect()
         sendJson(res, 200, { ok: true, config: { nmea: cfg.nmea } })

@@ -44,22 +44,12 @@ function sentenceId(raw?: string): string {
   return m ? m[1] : raw.substring(1, 4)
 }
 
-/** Format parsed message fields into a compact human-readable string */
-function formatMsg(msg: ParsedMsg): string {
-  const p: string[] = []
-  if (msg.latitude  !== undefined) p.push(`${msg.latitude.toFixed(5)}°`)
-  if (msg.longitude !== undefined) p.push(`${msg.longitude.toFixed(5)}°`)
-  if (msg.sog       !== undefined) p.push(`SOG ${msg.sog.toFixed(1)} kn`)
-  if (msg.cogTrue   !== undefined) p.push(`COG ${msg.cogTrue.toFixed(0)}°`)
-  if (msg.windApparentAngle !== undefined) p.push(`AWA ${msg.windApparentAngle.toFixed(0)}°`)
-  if (msg.windApparentSpeed !== undefined) p.push(`AWS ${msg.windApparentSpeed.toFixed(1)} kn`)
-  if (msg.windTrueAngle     !== undefined) p.push(`TWA ${msg.windTrueAngle.toFixed(0)}°`)
-  if (msg.windTrueDirection !== undefined) p.push(`TWD ${msg.windTrueDirection.toFixed(0)}°`)
-  if (msg.windTrueSpeed     !== undefined) p.push(`TWS ${msg.windTrueSpeed.toFixed(1)} kn`)
-  if (msg.baroPressureHPa   !== undefined) p.push(`${msg.baroPressureHPa.toFixed(0)} hPa`)
-  if (msg.temperature       !== undefined) p.push(`${msg.temperature.toFixed(1)} °C`)
-  if (msg.depth             !== undefined) p.push(`Depth ${msg.depth.toFixed(1)} m`)
-  return p.join(' · ') || msg.type
+/** Return the raw NMEA sentence content, stripping the $XXYYYY, header and *XX checksum */
+function rawContent(raw?: string): string {
+  if (!raw) return '—'
+  return raw
+    .replace(/^\$\w+,/, '')   // strip $GPXXX, / $SDXXX, etc.
+    .replace(/\*[0-9A-Fa-f]{2}$/, '')  // strip *checksum
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -82,23 +72,14 @@ export function NMEADebugPanel({
     return () => clearInterval(id)
   }, [])
 
-  // Build message log from liveData changes (avoids a duplicate WS connection)
+  // Build message log from liveData changes (avoids a duplicate WS connection).
+  // Only capture _raw and type — liveData is an accumulated state so all other
+  // fields would show stale values from previous sentence types (e.g. a $DBT
+  // entry would show lat/lon from the last $RMC).
   const addLogEntry = useCallback((data: NMEAData) => {
     const msg: ParsedMsg = {
       type: data.type ?? '?',
       _raw: data._raw,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      sog: data.sog,
-      cogTrue: data.cogTrue,
-      windApparentAngle: data.windApparentAngle,
-      windApparentSpeed: data.windApparentSpeed,
-      windTrueAngle: data.windTrueDirection,
-      windTrueDirection: data.windTrueDirection,
-      windTrueSpeed: data.windTrueSpeed,
-      baroPressureHPa: data.baroPressureHPa,
-      temperature: data.temperature,
-      depth: data.depth,
     }
     setLog(prev => [{ ts: data.updatedAt ?? Date.now(), msg }, ...prev.slice(0, 99)])
   }, [])
@@ -231,7 +212,7 @@ export function NMEADebugPanel({
                   {sentenceId(entry.msg._raw)}
                 </span>
                 <span className="font-mono text-gray-600 dark:text-gray-400 truncate">
-                  {formatMsg(entry.msg)}
+                  {rawContent(entry.msg._raw)}
                 </span>
               </div>
             ))}
