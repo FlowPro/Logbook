@@ -31,8 +31,9 @@ jobs:
           # Intel Mac users run the ARM binary transparently via Rosetta 2.
           - platform: macos-latest
             args: ''
+          # AppImage skipped — linuxdeploy fails on ubuntu-22.04 GitHub runners
           - platform: ubuntu-22.04
-            args: ''
+            args: '--bundles deb,rpm'
 
     runs-on: ${{ matrix.platform }}
 
@@ -67,8 +68,7 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libappindicator3-dev \
             librsvg2-dev \
-            patchelf \
-            libfuse2
+            patchelf
 
       - name: Install frontend dependencies
         run: npm install
@@ -121,9 +121,10 @@ jobs:
             ## Installation
             - **Windows:** `.msi` Installer herunterladen und ausführen
             - **macOS:** `.dmg` herunterladen, öffnen und Logbuch in Applications ziehen
-            - **Linux:** `.AppImage` herunterladen, ausführbar machen (`chmod +x`) und starten
+            - **Linux:** `.deb` herunterladen und mit `sudo dpkg -i` installieren
 
             > PWA-Nutzer: Seite im Browser neu laden, um die neue Version zu erhalten.
+          args: ${{ matrix.args }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
