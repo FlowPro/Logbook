@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.4] - 2026-02-28
+
+### Fixed
+- Windows: WebView2-Cache und Workbox-Caches werden nur noch beim Update-Install geleert (nicht bei jedem App-Start) — spart unnötige Ladezeit beim normalen Starten; Cache-Bereinigung erfolgt direkt vor `downloadAndInstall()` im Update-Flow
+
+---
+
 ## [1.4.3] - 2026-02-28
 
 ### Fixed

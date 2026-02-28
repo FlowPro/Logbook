@@ -223,6 +223,14 @@ export function Settings() {
     setUpdateState('downloading')
     setUpdateProgress(0)
     try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      // Clear WebView2 HTTP cache + Cache Storage so the new build is served fresh
+      await invoke('clear_webview_cache').catch(() => {})
+      if ('caches' in window) {
+        for (const k of await caches.keys()) {
+          if (k !== 'protomaps-tiles-precache') await caches.delete(k)
+        }
+      }
       let downloaded = 0
       await update.downloadAndInstall((event) => {
         if (event.event === 'Progress') {
@@ -231,7 +239,6 @@ export function Settings() {
         }
       })
       // Kill nmea-bridge.exe before relaunch so the NSIS installer can overwrite it
-      const { invoke } = await import('@tauri-apps/api/core')
       await invoke('kill_bridge').catch(() => {})
       const { relaunch } = await import('@tauri-apps/plugin-process')
       await relaunch()

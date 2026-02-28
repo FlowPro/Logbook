@@ -10,24 +10,13 @@ if ('serviceWorker' in navigator) {
     window.location.reload()
   })
 
-  // Tauri only: unregister stale SWs and clear Workbox caches.
-  // The Rust setup() also clears the WebView2 HTTP cache before the webview
-  // starts; this JS cleanup handles the Cache Storage layer on top of that.
-  // Preserves 'protomaps-tiles-precache' (explicitly pre-downloaded map tiles).
+  // Tauri only: unregister any stale service workers on startup.
+  // Cache clearing (WebView2 HTTP cache + Cache Storage) happens in the update
+  // flow (Settings.tsx installUpdate) so it only runs when actually needed.
   if ('__TAURI_INTERNALS__' in window) {
     ;(async () => {
-      let changed = false
       const regs = await navigator.serviceWorker.getRegistrations()
-      for (const r of regs) { await r.unregister(); changed = true }
-      if ('caches' in window) {
-        for (const k of await caches.keys()) {
-          if (k !== 'protomaps-tiles-precache') { await caches.delete(k); changed = true }
-        }
-      }
-      if (changed && !sessionStorage.__tauri_cleared) {
-        sessionStorage.__tauri_cleared = '1'
-        window.location.reload()
-      }
+      for (const r of regs) { await r.unregister() }
     })()
   }
 }

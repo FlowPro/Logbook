@@ -18,6 +18,33 @@ fn kill_bridge() {
     }
 }
 
+/// Clear the WebView2 HTTP response cache before installing an update.
+/// Called from the JS update flow (Settings → Update installieren) so the new
+/// binary always starts with a clean cache instead of serving stale index.html.
+/// Only the HTTP cache is deleted — IndexedDB, localStorage, and the
+/// Service Worker CacheStorage (pre-downloaded map tiles) are preserved.
+#[tauri::command]
+fn clear_webview_cache(app: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(data_dir) = app.path().app_local_data_dir() {
+            for entry in &["Cache", "Code Cache"] {
+                // Direct layout: %LocalAppData%\com.flowpro.logbuch\Cache
+                let path_direct = data_dir.join(entry);
+                if path_direct.exists() {
+                    let _ = std::fs::remove_dir_all(&path_direct);
+                }
+                // Fallback: %LocalAppData%\com.flowpro.logbuch\EBWebView\Default\Cache
+                let path_ebwv = data_dir.join("EBWebView").join("Default").join(entry);
+                if path_ebwv.exists() {
+                    let _ = std::fs::remove_dir_all(&path_ebwv);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -26,55 +53,17 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![save_file, kill_bridge])
+        .invoke_handler(tauri::generate_handler![save_file, kill_bridge, clear_webview_cache])
         .setup(|app| {
-            // ── Windows: clear WebView2 HTTP cache before the webview starts ─────
-            // WebView2 aggressively caches index.html and JS assets from the
-            // tauri:// custom protocol. After an app update the new binary runs
-            // but the old cached index.html (pointing to old JS hashes) is still
-            // served, so the UI shows an outdated version. Deleting only the HTTP
-            // response cache (Cache/ and Code Cache/) before the webview is created
-            // forces a fresh load from the embedded binary assets. IndexedDB,
-            // localStorage, and the Service Worker CacheStorage (pre-downloaded map
-            // tiles) are in separate subdirectories and are NOT touched.
-            #[cfg(target_os = "windows")]
-            {
-                if let Ok(data_dir) = app.path().app_local_data_dir() {
-                    for entry in &["Cache", "Code Cache"] {
-                        // Try direct layout (observed: %LocalAppData%\com.flowpro.logbuch\Cache)
-                        let path_direct = data_dir.join(entry);
-                        if path_direct.exists() {
-                            let _ = std::fs::remove_dir_all(&path_direct);
-                        }
-                        // Also try EBWebView\Default layout (fallback for other WRY versions)
-                        let path_ebwv = data_dir.join("EBWebView").join("Default").join(entry);
-                        if path_ebwv.exists() {
-                            let _ = std::fs::remove_dir_all(&path_ebwv);
-                        }
-                    }
-                }
-            }
-
-            // ── Unregister stale SWs + clear Workbox caches via JS eval ─────────
-            // Runs after page load. Belt-and-suspenders alongside the Rust cache
-            // clear above. Preserves 'protomaps-tiles-precache' (user tile downloads).
+            // Unregister any stale service workers from pre-1.1.3 installs.
+            // WebView2/WKWebView persist SW registrations across reinstalls;
+            // this ensures the next load is always SW-free in the desktop app.
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.eval(concat!(
-                    "(async()=>{",
-                    "var c=false;",
-                    "if('serviceWorker'in navigator){",
-                    "var r=await navigator.serviceWorker.getRegistrations();",
-                    "for(var i=0;i<r.length;i++){await r[i].unregister();c=true;}",
-                    "}",
-                    "if('caches'in window){",
-                    "var k=await caches.keys();",
-                    "for(var i=0;i<k.length;i++){",
-                    "if(k[i]!=='protomaps-tiles-precache'){await caches.delete(k[i]);c=true;}",
-                    "}",
-                    "}",
-                    "if(c&&!sessionStorage.__tc){sessionStorage.__tc='1';location.reload();}",
-                    "})();"
-                ));
+                let _ = window.eval(
+                    "if('serviceWorker'in navigator)\
+                     navigator.serviceWorker.getRegistrations()\
+                     .then(function(r){r.forEach(function(s){s.unregister()})})"
+                );
             }
             Ok(())
         })
