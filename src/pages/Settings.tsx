@@ -51,6 +51,14 @@ export function Settings() {
   const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
   type UpdateState = 'idle' | 'checking' | 'up-to-date' | 'ready' | 'downloading' | 'error'
   const [updateState, setUpdateState] = useState<UpdateState>('idle')
+
+  // In Tauri, read version from the native binary to bypass any SW-cached JS bundle
+  const [displayVersion, setDisplayVersion] = useState(__APP_VERSION__)
+  useEffect(() => {
+    if (isTauri) {
+      import('@tauri-apps/api/app').then(m => m.getVersion()).then(v => setDisplayVersion(v)).catch(() => {})
+    }
+  }, [isTauri])
   const [updateVersion, setUpdateVersion] = useState<string | null>(null)
   const [updateProgress, setUpdateProgress] = useState(0)
   const pendingUpdate = useRef<Update | null>(null)
@@ -845,7 +853,7 @@ export function Settings() {
           <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex justify-between">
               <span>{t('settings.version')}</span>
-              <span className="font-mono">{__APP_VERSION__}</span>
+              <span className="font-mono">{displayVersion}</span>
             </div>
             <div className="flex justify-between">
               <span>{t('settings.dataStorage')}</span>

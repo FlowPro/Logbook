@@ -333,6 +333,7 @@ const de = {
       noData:        'Keine Logeinträge mit Koordinaten für den gewählten Filter.',
       precacheBtn:   'Weltkarte offline speichern',
       precacheDone:  '✓ Weltkarte gecacht',
+      precacheNoKey: 'Protomaps-API-Key in den Einstellungen hinterlegen, um die Weltkarte offline zu speichern',
     },
 
     // Port Log

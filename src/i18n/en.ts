@@ -336,6 +336,7 @@ const en = {
       noData:        'No log entries with coordinates for the selected filter.',
       precacheBtn:   'Save world map offline',
       precacheDone:  '✓ World map cached',
+      precacheNoKey: 'Add a Protomaps API key in Settings to save the world map for offline use',
     },
 
     // Port Log

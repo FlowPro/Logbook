@@ -1,8 +1,55 @@
-Info# Logbuch ⚓
+# Logbuch ⚓
 
 **Digitales Segellogbuch als Progressive Web App (PWA)**
 
 Logbuch ist ein vollständig offline-fähiges Logbuch für Segelyachten. Alle Daten werden lokal im Browser gespeichert (IndexedDB) — kein Server, kein Cloud-Abo, keine Internetverbindung erforderlich. Die App kann auf jedem Gerät (iOS, Android, macOS, Windows) als installierbare App genutzt werden.
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><b>Dashboard — Hell</b></td>
+    <td align="center"><b>Dashboard — Dunkel</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/dashboard-light.png" alt="Dashboard Light" width="480"/></td>
+    <td><img src="docs/screenshots/dashboard-dark.png" alt="Dashboard Dark" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Karte — Hell</b></td>
+    <td align="center"><b>Karte — Dunkel</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/map-light.png" alt="Karte Light" width="480"/></td>
+    <td><img src="docs/screenshots/map-dark.png" alt="Karte Dark" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Wartung / Kanban — Hell</b></td>
+    <td align="center"><b>Wartung / Kanban — Dunkel</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/maintenance-light.png" alt="Wartung Light" width="480"/></td>
+    <td><img src="docs/screenshots/maintenance-dark.png" alt="Wartung Dark" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Port Log — Hell</b></td>
+    <td align="center"><b>Port Log — Dunkel</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/portlog-light.png" alt="Port Log Light" width="480"/></td>
+    <td><img src="docs/screenshots/portlog-dark.png" alt="Port Log Dark" width="480"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Auswertung — Hell</b></td>
+    <td align="center"><b>Auswertung — Dunkel</b></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/summary-light.png" alt="Auswertung Light" width="480"/></td>
+    <td><img src="docs/screenshots/summary-dark.png" alt="Auswertung Dark" width="480"/></td>
+  </tr>
+</table>
 
 ---
 

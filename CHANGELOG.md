@@ -7,6 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.2] - 2026-02-28
+
+### Added
+- README: Screenshots aller Hauptseiten (Dashboard, Karte, Wartung, Port Log, Auswertung) in hell und dunkel
+- Karte: Download-Button für Offline-Karte ist jetzt immer sichtbar — ohne Protomaps-API-Key ausgegraut mit erklärendem Tooltip
+
+### Fixed
+- Tauri: Versionsanzeige liest jetzt aus der nativen Binary (Sidebar + Einstellungen) — verhindert Anzeige veralteter Versionsnummern nach Updates durch WebView2-Cache
+
+---
+
 ## [1.4.1] - 2026-02-28
 
 ### Added

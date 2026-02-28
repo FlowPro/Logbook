@@ -561,12 +561,17 @@ export function MapView() {
         {/* Right: offline cache + wind toggle + legend */}
         <div className="flex items-center gap-2 flex-shrink-0">
 
-          {/* Offline cache button (only with API key) */}
-          {hasApiKey && cacheState === 'idle' && (
+          {/* Offline cache button */}
+          {cacheState === 'idle' && (
             <button
-              onClick={handleStartCache}
-              title={t('map.precacheBtn')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              onClick={hasApiKey ? handleStartCache : undefined}
+              title={hasApiKey ? t('map.precacheBtn') : t('map.precacheNoKey')}
+              disabled={!hasApiKey}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                hasApiKey
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  : 'bg-gray-50 dark:bg-gray-800/50 text-gray-300 dark:text-gray-600 cursor-not-allowed'
+              }`}
             >
               <Download className="w-3.5 h-3.5" />
               <span className="max-lg:hidden">{t('map.precacheBtn')}</span>

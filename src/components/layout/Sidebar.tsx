@@ -2,7 +2,7 @@ declare const __APP_VERSION__: string
 
 import { NavLink } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/database'
 import { getVesselPrefix } from '../../db/models'
@@ -30,6 +30,14 @@ interface SidebarProps {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { t } = useTranslation()
   const ship = useLiveQuery(() => db.ship.toCollection().first())
+
+  // In Tauri, read version from the native binary (bypasses any SW-cached JS bundle)
+  const [displayVersion, setDisplayVersion] = useState(__APP_VERSION__)
+  useEffect(() => {
+    if ('__TAURI_INTERNALS__' in window) {
+      import('@tauri-apps/api/app').then(m => m.getVersion()).then(v => setDisplayVersion(v)).catch(() => {})
+    }
+  }, [])
   const vesselPrefix = getVesselPrefix(ship?.type)
   const shipLabel = ship?.name ? `${vesselPrefix} ${ship.name}` : 'Maritime Log'
 
@@ -191,7 +199,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between gap-2
           md:justify-center md:px-2 lg:justify-between lg:px-4">
           <div className="md:hidden lg:block">
-            <p className="text-xs text-gray-500">Logbuch v{__APP_VERSION__}</p>
+            <p className="text-xs text-gray-500">Logbuch v{displayVersion}</p>
             <p className="text-xs text-gray-600">Offline-ready PWA</p>
           </div>
           <NavLink
