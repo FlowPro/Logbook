@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Toaster, toast } from 'sonner'
 import { Sidebar } from './Sidebar'
@@ -31,6 +31,7 @@ const routeTitles: Record<string, string> = {
 export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const { t } = useTranslation()
   const { settings, updateSettings } = useSettings()
 
@@ -171,6 +172,26 @@ export function AppLayout() {
       }
     } catch { /* localStorage not available */ }
   }, [])
+
+  // One-time backup reminder for Tauri desktop installs without auto-backup enabled.
+  // Shown once after 4 s so the app feels settled before interrupting the user.
+  useEffect(() => {
+    if (!isTauri || !settings) return
+    if (settings.autoBackup) return
+    try { if (localStorage.getItem('backup-reminder-shown')) return } catch { return }
+    const timer = setTimeout(() => {
+      try { localStorage.setItem('backup-reminder-shown', '1') } catch { /* ignore */ }
+      toast(t('settings.backupReminderTitle'), {
+        description: t('settings.backupReminderDesc'),
+        duration: 20_000,
+        action: {
+          label: t('settings.backupReminderAction'),
+          onClick: () => navigate('/settings#backup'),
+        },
+      })
+    }, 4_000)
+    return () => clearTimeout(timer)
+  }, [settings?.autoBackup]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const titleKey = routeTitles[location.pathname]
   const title = titleKey ? t(titleKey) : ''
