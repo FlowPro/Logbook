@@ -2,9 +2,38 @@
 
 **Digitales Segellogbuch — Desktop-App für macOS, Windows und Linux**
 
+[![GitHub Release](https://img.shields.io/github/v/release/FlowPro/Logbook?label=version&color=blue)](https://github.com/FlowPro/Logbook/releases)
+[![License: MIT](https://img.shields.io/github/license/FlowPro/Logbook)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)](#desktop-app-installieren)
+[![Built with Tauri](https://img.shields.io/badge/Tauri-2-24C8D8?logo=tauri&logoColor=white)](https://tauri.app)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Built with Claude Code](https://img.shields.io/badge/built%20with-Claude%20Code-D97706)](https://claude.ai/code)
+
 Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Cloud-Abo und ohne Internetverbindung. Alle Daten werden lokal gespeichert — auf dem Gerät, nicht irgendwo in der Cloud.
 
-> Dieses Projekt wurde vollständig mit [Claude Code](https://claude.ai/code) entwickelt — Code, Tests, CI/CD-Pipeline und Releases inklusive.
+> Dieses Projekt wurde vollständig mit [Claude Code](https://claude.ai/code) entwickelt — Code, CI/CD-Pipeline und Releases inklusive.
+
+---
+
+## Inhaltsverzeichnis
+
+- [Live-Demo](#live-demo)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Desktop-App installieren](#desktop-app-installieren)
+  - [Sicherheitswarnung beim ersten Start](#sicherheitswarnung-beim-ersten-start)
+- [NMEA-Bridge](#nmea-bridge-optional)
+- [Datensicherung](#datensicherung)
+- [PWA / Selbst-Hosting](#pwa--selbst-hosting)
+  - [Voraussetzungen](#voraussetzungen)
+  - [Setup](#setup)
+  - [Alle Befehle](#alle-befehle)
+  - [Desktop-App selbst bauen](#desktop-app-selbst-bauen)
+- [Projektstruktur](#projektstruktur)
+- [Technologie](#technologie)
+- [Haftungsausschluss](#haftungsausschluss)
+- [Lizenz](#lizenz)
 
 ---
 
@@ -12,7 +41,7 @@ Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Clo
 
 **[→ Demo auf GitHub Pages](https://flowpro.github.io/Logbook/)** — sofort im Browser ausprobieren, keine Installation nötig.
 
-> **Hinweis:** Dies ist eine öffentliche Demo — bitte keine echten persönlichen Daten (Namen, Passdaten, Koordinaten) eingeben. Daten werden zwar lokal im Browser gespeichert, aber da es sich um eine Demo handelt, empfehlen wir keine sensiblen Informationen einzugeben. Datei-Upload und automatisches Backup sind im Demo-Modus deaktiviert. Für den vollen Funktionsumfang empfehlen wir die Desktop-App.
+> **Hinweis:** Dies ist eine öffentliche Demo — bitte keine echten persönlichen Daten (Namen, Passdaten, Koordinaten) eingeben. Daten werden lokal im Browser gespeichert und sind nicht mit anderen Besuchern geteilt. Datei-Upload und automatisches Backup sind im Demo-Modus deaktiviert. Für den vollen Funktionsumfang empfehlen wir die Desktop-App.
 
 ---
 
@@ -94,8 +123,6 @@ Die einfachste Art, Logbuch zu nutzen: Installer herunterladen und starten — k
 
 > **Automatische Updates:** Die App prüft beim Start auf neue Versionen und bietet ein Update an.
 
----
-
 ### Sicherheitswarnung beim ersten Start
 
 Die App ist nicht mit einem offiziellen Apple- oder Microsoft-Zertifikat signiert. Beim ersten Start erscheint eine Warnung — das ist normal.
@@ -157,15 +184,13 @@ cd Logbook
 npm install
 ```
 
-### Entwicklungsserver
-
+**Entwicklungsserver:**
 ```bash
 npm run dev
 # → http://localhost:5173
 ```
 
-### Produktions-Build
-
+**Produktions-Build:**
 ```bash
 npm run build    # Erzeugt dist/
 npm run preview  # Lokaler Test auf http://localhost:4173
@@ -187,8 +212,9 @@ Den Inhalt von `dist/` auf einen beliebigen Webserver kopieren (Nginx, Apache, G
 
 ### Desktop-App selbst bauen
 
+Voraussetzungen: [Node.js](https://nodejs.org) + [Rust](https://rustup.rs)
+
 ```bash
-# Voraussetzungen: Node.js + Rust (rustup.rs)
 npm install
 npm run tauri:build
 # Installer liegt unter src-tauri/target/release/bundle/
@@ -217,13 +243,16 @@ logbuch/
 
 ## Technologie
 
-- [Tauri](https://tauri.app) — Desktop-App (Rust)
-- [Vite](https://vitejs.dev) + [React 18](https://react.dev) + [TypeScript](https://www.typescriptlang.org)
-- [Dexie.js](https://dexie.org) — IndexedDB
-- [Tailwind CSS v3](https://tailwindcss.com)
-- [MapLibre GL](https://maplibre.org) + [Protomaps](https://protomaps.com) — Karte
-- [jsPDF](https://github.com/parallax/jsPDF) — PDF-Export
-- [vite-plugin-pwa](https://vite-pwa-org.netlify.app) — PWA / Service Worker
+| Bereich | Stack |
+|---------|-------|
+| Desktop | [Tauri 2](https://tauri.app) (Rust) |
+| Frontend | [React 18](https://react.dev) + [TypeScript 5](https://www.typescriptlang.org) + [Vite](https://vitejs.dev) |
+| Styling | [Tailwind CSS v3](https://tailwindcss.com) |
+| Datenbank | [Dexie.js](https://dexie.org) (IndexedDB) |
+| Karte | [MapLibre GL](https://maplibre.org) + [Protomaps](https://protomaps.com) |
+| PDF | [jsPDF](https://github.com/parallax/jsPDF) + [autotable](https://github.com/simonbengtsson/jsPDF-AutoTable) |
+| PWA | [vite-plugin-pwa](https://vite-pwa-org.netlify.app) (Workbox) |
+| Entwicklung | [Claude Code](https://claude.ai/code) |
 
 ---
 
