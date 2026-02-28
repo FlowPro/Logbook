@@ -8,10 +8,12 @@ import { useShip } from '../hooks/useShip'
 import { generateShipDossierPDF } from '../utils/pdf'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
+import { Select } from '../components/ui/Select'
 import { CountrySelect } from '../components/ui/CountrySelect'
 import { Card, CardHeader } from '../components/ui/Card'
 import { FileUpload } from '../components/ui/FileUpload'
 import type { DocumentAttachment } from '../db/models'
+import { VESSEL_TYPES } from '../db/models'
 
 const schema = z.object({
   name: z.string().min(1),
@@ -130,7 +132,14 @@ export function ShipData({ embedded = false }: ShipDataProps) {
           <div className="space-y-4">
             <div className={r2}>
               <Input label={t('ship.name')} {...register('name')} error={errors.name?.message} required />
-              <Input label={t('ship.type')} {...register('type')} />
+              <Controller name="type" control={control} render={({ field }) => (
+                <Select
+                  label={t('ship.type')}
+                  options={VESSEL_TYPES.map(vt => ({ value: vt.value, label: vt.value }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )} />
             </div>
             <div className={r3}>
               <Input label={t('ship.manufacturer')} {...register('manufacturer')} />

@@ -406,22 +406,6 @@ export function Settings() {
         </div>
       </Card>
 
-      {/* Ship Data */}
-      <Card>
-        <button type="button" onClick={() => toggleSection('ship')} className="w-full flex items-center justify-between gap-2 text-left">
-          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
-            <Anchor className="w-4 h-4 text-gray-500" />
-            {t('settings.shipSection')}
-          </div>
-          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('ship') ? 'rotate-180' : ''}`} />
-        </button>
-        {openSections.has('ship') && (
-          <div className="mt-4">
-            <ShipData embedded />
-          </div>
-        )}
-      </Card>
-
       {/* Appearance */}
       <Card>
         <button type="button" onClick={() => toggleSection('appearance')} className="w-full flex items-center justify-between gap-2 text-left">
@@ -451,6 +435,22 @@ export function Settings() {
             <span className="sr-only">Toggle dark mode</span>
           </button>
         </div>
+        )}
+      </Card>
+
+      {/* Ship Data */}
+      <Card>
+        <button type="button" onClick={() => toggleSection('ship')} className="w-full flex items-center justify-between gap-2 text-left">
+          <div className="flex items-center gap-2 font-semibold text-gray-900 dark:text-gray-100">
+            <Anchor className="w-4 h-4 text-gray-500" />
+            {t('settings.shipSection')}
+          </div>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('ship') ? 'rotate-180' : ''}`} />
+        </button>
+        {openSections.has('ship') && (
+          <div className="mt-4">
+            <ShipData embedded />
+          </div>
         )}
       </Card>
 

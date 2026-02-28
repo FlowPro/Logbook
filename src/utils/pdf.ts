@@ -650,7 +650,6 @@ export async function generateShipDossierPDF(ship: Ship, includeAttachments = tr
   row('Country', ship.registrationCountry)
   row('MMSI', ship.mmsi)
   row('Call Sign', ship.callSign)
-  row('IMO', ship.imoNumber)
   y += 3
 
   section('DIMENSIONS')

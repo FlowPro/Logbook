@@ -7,6 +7,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.1] - 2026-02-28
+
+### Added
+- Schiffsdaten: Schiffstyp ist jetzt ein Dropdown mit vordefinierten Typen (Segelyacht, Katamaran, Motoryacht …)
+- Schiffsdaten: Präfix SV/MV wird automatisch aus dem Schiffstyp abgeleitet (Sidebar, Dokumenttitel)
+
+### Fixed
+- Karte: Routen werden jetzt im Darkmode beim ersten Öffnen sofort korrekt angezeigt
+- Wartung: Kategorie-Icons (⚙ Motor, ⛵ Rigg …) sind in Filterleiste und Karten korrekt ausgerichtet
+- Passages: Fokus springt nach Hafen-Autocomplete-Auswahl nicht mehr auf das Länder-Feld
+
+### Changed
+- Einstellungen: Bereich «Erscheinungsbild» erscheint vor «Schiffsdaten»
+
+---
+
 ## [1.4.0] - 2026-02-28
 
 ### Added

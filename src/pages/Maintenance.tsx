@@ -172,8 +172,7 @@ function KanbanCard({ entry, index, catLabel, currentEngineHours, onEdit, onDele
 
           {/* Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm leading-none">{CAT_EMOJI[entry.category] ?? '🔧'}</span>
-            <span className="text-[10px] text-gray-500 dark:text-gray-400">{catLabel}</span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">{CAT_EMOJI[entry.category] ?? '🔧'} {catLabel}</span>
             <PriorityBadge priority={entry.priority} />
             {entry.recurring && entry.recurrenceType && entry.recurrenceValue && (
               <span className="flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
@@ -634,8 +633,7 @@ export function Maintenance() {
                   : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
               }`}
             >
-              {opt.value !== 'all' && <span className="mr-1">{CAT_EMOJI[opt.value]}</span>}
-              {opt.label}
+              {opt.value !== 'all' ? `${CAT_EMOJI[opt.value]} ${opt.label}` : opt.label}
             </button>
           ))}
         </div>

@@ -138,25 +138,25 @@ function PortAutocomplete({
     setOpen(false)
   }
 
+  // Advance focus to idx+2, skipping the paired country-select field
+  function advanceFocus() {
+    requestAnimationFrame(() => {
+      const form = inputRef.current?.closest('form')
+      if (!form) return
+      const focusables = Array.from(
+        form.querySelectorAll<HTMLElement>('input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"])')
+      )
+      const idx = focusables.indexOf(inputRef.current!)
+      if (idx >= 0 && focusables[idx + 2]) focusables[idx + 2].focus()
+    })
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!open || suggestions.length === 0) return
     if (e.key === 'ArrowDown') { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, suggestions.length - 1)) }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)) }
-    if (e.key === 'Enter')     { e.preventDefault(); accept(suggestions[focusIdx]) }
-    if (e.key === 'Tab') {
-      // Accept suggestion and skip the paired country-select (idx+1), landing on the next field
-      accept(suggestions[focusIdx])
-      e.preventDefault()
-      requestAnimationFrame(() => {
-        const form = inputRef.current?.closest('form')
-        if (!form) return
-        const focusables = Array.from(
-          form.querySelectorAll<HTMLElement>('input:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"])')
-        )
-        const idx = focusables.indexOf(inputRef.current!)
-        if (idx >= 0 && focusables[idx + 2]) focusables[idx + 2].focus()
-      })
-    }
+    if (e.key === 'Enter')     { e.preventDefault(); accept(suggestions[focusIdx]); advanceFocus() }
+    if (e.key === 'Tab')       { e.preventDefault(); accept(suggestions[focusIdx]); advanceFocus() }
     if (e.key === 'Escape')    { setOpen(false) }
   }
 
@@ -182,7 +182,7 @@ function PortAutocomplete({
           {suggestions.map((opt, i) => (
             <li
               key={opt.display}
-              onMouseDown={() => accept(opt)}
+              onMouseDown={e => { e.preventDefault(); accept(opt); advanceFocus() }}
               className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer ${
                 i === focusIdx
                   ? 'bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-300'

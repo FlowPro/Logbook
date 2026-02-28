@@ -47,13 +47,16 @@ function tileCount(maxZoom: number) {
   return n
 }
 
-/** Pre-fetch every tile for z=0..maxZoom to populate the SW/browser cache */
+const PRECACHE_NAME = 'protomaps-tiles-precache'
+
+/** Pre-fetch every tile for z=0..maxZoom and write directly into CacheStorage */
 async function precacheTiles(
   apiKey: string,
   maxZoom: number,
   onProgress: (done: number, total: number) => void,
   signal: AbortSignal,
 ) {
+  const cache = 'caches' in window ? await caches.open(PRECACHE_NAME) : null
   const total = tileCount(maxZoom)
   let done = 0
   const BATCH = 20
@@ -65,15 +68,16 @@ async function precacheTiles(
       for (let y = 0; y < n; y++)
         coords.push([x, y])
 
-    // Process in batches
     for (let i = 0; i < coords.length && !signal.aborted; i += BATCH) {
       const batch = coords.slice(i, i + BATCH)
       await Promise.allSettled(
-        batch.map(([x, y]) =>
-          fetch(`https://api.protomaps.com/tiles/v4/${z}/${x}/${y}.mvt?key=${apiKey}`,
-            { signal }
-          ).catch(() => {})
-        )
+        batch.map(async ([x, y]) => {
+          const url = `https://api.protomaps.com/tiles/v4/${z}/${x}/${y}.mvt?key=${apiKey}`
+          try {
+            const res = await fetch(url, { signal })
+            if (res.ok && cache) await cache.put(url, res)
+          } catch { /* aborted or network error */ }
+        })
       )
       done += batch.length
       onProgress(done, total)
@@ -138,6 +142,7 @@ export function MapView() {
   const appliedStyleRef  = useRef<'light' | 'dark'>('light')
   const cacheAbortRef    = useRef<AbortController | null>(null)
   const [mapReady, setMapReady] = useState(false)
+  const [mapStyleReady, setMapStyleReady] = useState(0)
 
   const [filterMode,        setFilterMode]        = useState<FilterMode>('all')
   const [selectedPassageId, setSelectedPassageId] = useState<number | null>(null)
@@ -148,10 +153,20 @@ export function MapView() {
   const [cacheState,    setCacheState]    = useState<'idle' | 'running' | 'done'>('idle')
   const [cacheProgress, setCacheProgress] = useState(0) // 0-100
 
-  const isDark       = settings?.darkMode ?? false
-  const desiredStyle = isDark ? 'dark' : 'light'
-  const apiKey       = settings?.protomapsApiKey?.trim() ?? ''
-  const hasApiKey    = apiKey.length > 0
+  const settingsLoaded = settings !== undefined
+  const isDark         = settings?.darkMode ?? false
+  const desiredStyle   = isDark ? 'dark' : 'light'
+  const apiKey         = settings?.protomapsApiKey?.trim() ?? ''
+  const hasApiKey      = apiKey.length > 0
+
+  // Check our own precache to determine button visibility
+  useEffect(() => {
+    if (!hasApiKey || !('caches' in window)) return
+    caches.open(PRECACHE_NAME)
+      .then(cache => cache.keys())
+      .then(keys => setCacheState(keys.length > 0 ? 'done' : 'idle'))
+      .catch(() => {})
+  }, [hasApiKey])
 
   // Resolve the style: Protomaps if API key set, else fallback
   const resolveStyle = useCallback((flavor: 'light' | 'dark') =>
@@ -260,6 +275,15 @@ export function MapView() {
   // ── Layer setup ───────────────────────────────────────────────────────────────
 
   const setupLayers = useCallback((map: maplibregl.Map) => {
+    // Defensive: remove stale custom layers/sources in case the style diff
+    // left them behind (MapLibre diff mode may not remove user-added sources)
+    for (const id of ['route-sail', 'route-motor', 'wind-arrows', 'entry-dots', 'mooring-dots']) {
+      try { if (map.getLayer(id)) map.removeLayer(id) } catch { /* ignore */ }
+    }
+    for (const id of ['route', 'wind', 'points']) {
+      try { if (map.getSource(id)) map.removeSource(id) } catch { /* ignore */ }
+    }
+
     map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     map.addLayer({
       id: 'route-sail', type: 'line', source: 'route',
@@ -381,10 +405,13 @@ export function MapView() {
     }
   }, [])
 
-  // ── Map initialisation (once) ─────────────────────────────────────────────────
+  // ── Map initialisation ────────────────────────────────────────────────────────
+  // Wait for settings to load before creating the map so the correct
+  // dark/light style (and Protomaps API key) are known from the start,
+  // eliminating the forced style-switch that caused routes to disappear.
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return
+    if (!mapContainerRef.current || mapRef.current || !settingsLoaded) return
 
     const pmtilesProtocol = new Protocol()
     maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile)
@@ -392,12 +419,12 @@ export function MapView() {
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      style: resolveStyle('light') as any,
+      style: resolveStyle(desiredStyle) as any,
       center: [10, 48],
       zoom: 4,
       attributionControl: false,
     })
-    appliedStyleRef.current = 'light'
+    appliedStyleRef.current = desiredStyle
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right')
     map.addControl(new maplibregl.ScaleControl({ unit: 'nautical' }), 'bottom-left')
@@ -417,7 +444,7 @@ export function MapView() {
       setMapReady(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [settingsLoaded])
 
   // ── Style switch: follows global dark mode ────────────────────────────────────
 
@@ -426,13 +453,11 @@ export function MapView() {
     if (!mapReady || !map) return
     if (appliedStyleRef.current === desiredStyle) return
     appliedStyleRef.current = desiredStyle
-    setMapReady(false)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     map.setStyle(resolveStyle(desiredStyle) as any)
     map.once('style.load', () => {
       setupLayers(map)
-      fillSources(map, dataRef.current)
-      setMapReady(true)
+      setMapStyleReady(v => v + 1) // triggers data update effect with latest geojson
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [desiredStyle, mapReady])
@@ -443,7 +468,7 @@ export function MapView() {
     const map = mapRef.current
     if (!mapReady || !map) return
     fillSources(map, geojson)
-  }, [mapReady, geojson, fillSources])
+  }, [mapReady, mapStyleReady, geojson, fillSources])
 
   // ── Wind layer visibility ─────────────────────────────────────────────────────
 

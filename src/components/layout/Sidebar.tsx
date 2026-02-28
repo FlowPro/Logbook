@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/database'
+import { getVesselPrefix } from '../../db/models'
 import {
   LayoutDashboard,
   Anchor,
@@ -29,7 +30,8 @@ interface SidebarProps {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { t } = useTranslation()
   const ship = useLiveQuery(() => db.ship.toCollection().first())
-  const shipLabel = ship?.name ? `SV ${ship.name}` : 'Maritime Log'
+  const vesselPrefix = getVesselPrefix(ship?.type)
+  const shipLabel = ship?.name ? `${vesselPrefix} ${ship.name}` : 'Maritime Log'
 
   // Live counters for nav badges
   const passageCount    = useLiveQuery(() => db.passages.count()) ?? 0
@@ -44,8 +46,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }) ?? 0
 
   useEffect(() => {
-    document.title = ship?.name ? `Logbuch SV ${ship.name}` : 'Logbuch'
-  }, [ship?.name])
+    document.title = ship?.name ? `Logbuch ${vesselPrefix} ${ship.name}` : 'Logbuch'
+  }, [ship?.name, vesselPrefix])
 
   const navItems = [
     { to: '/',            icon: LayoutDashboard, label: t('nav.dashboard'),    end: true, badge: 0 },
