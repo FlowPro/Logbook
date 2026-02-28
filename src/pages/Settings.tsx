@@ -119,10 +119,11 @@ export function Settings() {
   )
 
   // Collapsible sections – Appearance open by default; auto-open section from URL hash (e.g. /settings#nmea)
+  // #update is a sub-anchor inside the About section → open 'about' and scroll after render
   const [openSections, setOpenSections] = useState<Set<string>>(() => {
     const initial = new Set<string>(['appearance'])
     const hash = location.hash.slice(1)
-    if (hash) initial.add(hash)
+    if (hash) initial.add(hash === 'update' ? 'about' : hash)
     return initial
   })
   function toggleSection(id: string) {
@@ -133,6 +134,17 @@ export function Settings() {
       return next
     })
   }
+
+  // Scroll to anchor element after section has opened (e.g. #update inside #about)
+  useEffect(() => {
+    const hash = location.hash.slice(1)
+    if (!hash) return
+    const timer = setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150) // wait for section to expand
+    return () => clearTimeout(timer)
+  }, [location.hash])
+
 
   const entriesCount = useLiveQuery(() => db.logEntries.count()) ?? 0
   const passagesCount = useLiveQuery(() => db.passages.count()) ?? 0
@@ -888,7 +900,7 @@ export function Settings() {
 
           {/* Update section — Tauri only */}
           {isTauri && (
-            <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div id="update" className="pt-3 border-t border-gray-100 dark:border-gray-700">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">{t('settings.appUpdate')}</p>
               <div className="flex items-center gap-3 flex-wrap">
                 <Button

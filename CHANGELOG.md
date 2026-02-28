@@ -7,6 +7,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.6] - 2026-02-28
+
+### Added
+- Auto-Update: App prüft beim Start (nach 5 s) stumm auf neue Versionen und zeigt einen Toast mit «Installieren»-Button wenn ein Update verfügbar ist — README-Beschreibung stimmt jetzt mit dem tatsächlichen Verhalten überein
+- Einstellungen: Update-Bereich hat Anker `#update`; Link aus dem Toast springt direkt dorthin; About-Sektion öffnet sich automatisch
+
+### Fixed
+- NMEA: Bridge verbindet sich jetzt auch automatisch zum NMEA-Gerät wenn der Bridge-Prozess bereits läuft (z. B. nach App-Neustart auf macOS/Windows) — kein manuelles «Verbinden» mehr nötig
+- NMEA: Fallback auf `POST /api/connect` wenn kein Geräte-Host in Dexie gespeichert ist (Nutzer die NMEA vor v1.2.3 eingerichtet haben)
+
+---
+
 ## [1.4.5] - 2026-02-28
 
 ### Changed

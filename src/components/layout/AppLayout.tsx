@@ -48,11 +48,12 @@ export function AppLayout() {
   // After the bridge sidecar spawns, wait for it to accept connections then apply the
   // NMEA device config stored in Dexie (host/port/protocol). This survives app restarts
   // because the bun-compiled bridge binary cannot reliably write config.json to disk.
+  // Also acts as the auto-connect trigger: if the bridge is not connected, it will
+  // either update config + reconnect (if stored settings differ) or just trigger connect.
   async function applyStoredNmeaConfig() {
-    if (!settings?.nmeaDeviceHost) return
-    const host = settings.nmeaDeviceHost
-    const port = settings.nmeaDevicePort ?? 10110
-    const protocol = settings.nmeaDeviceProtocol ?? 'tcp'
+    const host = settings?.nmeaDeviceHost
+    const port = settings?.nmeaDevicePort ?? 10110
+    const protocol = settings?.nmeaDeviceProtocol ?? 'tcp'
     for (let i = 0; i < 20; i++) {
       await new Promise<void>(r => setTimeout(r, 500))
       try {
@@ -60,12 +61,18 @@ export function AppLayout() {
         if (!res?.ok) continue
         const status = await res.json() as { nmeaConnected: boolean; config: { nmea: { host: string; port: number } } }
         // Skip if bridge is already connected with the correct config — avoid disrupting active connection
-        if (status.nmeaConnected && status.config.nmea.host === host && status.config.nmea.port === port) return
-        fetch('http://localhost:3001/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ host, port, protocol }),
-        }).catch(() => {})
+        if (status.nmeaConnected && (!host || (status.config.nmea.host === host && status.config.nmea.port === port))) return
+        if (host) {
+          // Stored config available → update bridge config (also triggers reconnect)
+          fetch('http://localhost:3001/api/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ host, port, protocol }),
+          }).catch(() => {})
+        } else {
+          // No stored config → trigger connect with whatever config the bridge currently has
+          fetch('http://localhost:3001/api/connect', { method: 'POST' }).catch(() => {})
+        }
         return
       } catch { /* not ready yet */ }
     }
@@ -192,6 +199,29 @@ export function AppLayout() {
     }, 4_000)
     return () => clearTimeout(timer)
   }, [settings?.autoBackup]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Silent startup update check — only in Tauri desktop builds.
+  // Runs once after 5 s; shows a toast with an Install action if a newer version is available.
+  useEffect(() => {
+    if (!isTauri) return
+    const timer = setTimeout(async () => {
+      try {
+        const { check } = await import('@tauri-apps/plugin-updater')
+        const update = await check()
+        if (!update) return
+        toast(t('settings.updateAvailable', { version: update.version }), {
+          duration: 0, // persist until dismissed
+          action: {
+            label: t('settings.installUpdate'),
+            onClick: () => navigate('/settings#update'),
+          },
+        })
+      } catch {
+        // Silent fail — startup update check should never disrupt the user
+      }
+    }, 5_000)
+    return () => clearTimeout(timer)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const titleKey = routeTitles[location.pathname]
   const title = titleKey ? t(titleKey) : ''
