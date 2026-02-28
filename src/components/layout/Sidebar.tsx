@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   X,
+  Package,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -53,6 +54,17 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     ).count()
   }) ?? 0
 
+  const storageAlerts = useLiveQuery(async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const soon  = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10)
+    const items = await db.storageItems.toArray()
+    return items.filter(i =>
+      (i.minQuantity != null && i.quantity < i.minQuantity) ||
+      (i.expiryDate  != null && i.expiryDate <= soon && i.expiryDate >= today) ||
+      (i.expiryDate  != null && i.expiryDate < today)
+    ).length
+  }) ?? 0
+
   useEffect(() => {
     document.title = ship?.name ? `Logbuch ${vesselPrefix} ${ship.name}` : 'Logbuch'
   }, [ship?.name, vesselPrefix])
@@ -62,7 +74,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     { to: '/ports',       icon: MapPin,          label: t('nav.portLog'),      badge: passageCount },
     { to: '/summary',     icon: BarChart3,       label: t('nav.summary'),      badge: 0 },
     { to: '/map',         icon: Map,             label: t('nav.map'),          badge: 0 },
-    { to: '/maintenance', icon: Wrench,          label: t('nav.maintenance'),  badge: pendingMaint, badgeAlert: overdueMaint > 0 },
+    { to: '/maintenance', icon: Wrench,          label: t('nav.maintenance'),  badge: pendingMaint,   badgeAlert: overdueMaint > 0 },
+    { to: '/storage',     icon: Package,         label: t('nav.storage'),      badge: storageAlerts,  badgeAlert: storageAlerts > 0 },
     { to: '/crew',        icon: Users,           label: t('nav.crew'),         badge: 0 },
     { to: '/export',      icon: Download,        label: t('nav.export'),       badge: 0 },
     { to: '/search',      icon: Search,          label: t('nav.search'),       badge: 0 },

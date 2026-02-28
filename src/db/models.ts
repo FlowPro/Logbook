@@ -335,3 +335,44 @@ export interface SafetyChecklist {
   notes: string
   createdAt: string
 }
+
+// ── Storage / Lagerplan ───────────────────────────────────
+export type StorageCategory =
+  'spare_parts' | 'tools' | 'rigging' | 'safety' |
+  'food' | 'beverages' | 'medicine' | 'navigation' |
+  'electronics' | 'clothing' | 'documents' | 'other'
+
+/** Level 1 — Bereich (e.g. "Salon", "Maschinenraum") */
+export interface StorageArea {
+  id?: number
+  name: string
+  icon?: string   // lucide icon name, e.g. 'Anchor', 'Box'
+  color?: string  // tailwind color token, e.g. 'blue', 'green'
+  order: number
+  createdAt: string
+}
+
+/** Level 2 — Fach (e.g. "Schrank SB vorne", "Bilge unter Tisch") */
+export interface StorageSection {
+  id?: number
+  areaId: number  // parent StorageArea
+  name: string
+  order: number
+  createdAt: string
+}
+
+export interface StorageItem {
+  id?: number
+  areaId: number      // Level 1 — required
+  sectionId?: number  // Level 2 — optional
+  name: string
+  category: StorageCategory
+  quantity: number
+  unit: string          // 'Stk', 'kg', 'l', 'm', 'Dose' …
+  minQuantity?: number  // low-stock threshold
+  expiryDate?: string   // ISO date YYYY-MM-DD
+  notes?: string
+  photo?: string        // base64 data-URL (optional)
+  createdAt: string
+  updatedAt: string
+}

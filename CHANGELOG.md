@@ -7,6 +7,15 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.0] - 2026-02-28
+
+### Added
+- **Lagerplan** (`/storage`) — neues Feature zur Inventarisierung von Bordmaterial; zweistufige Hierarchie (Bereich → Fach), vollständiges CRUD, Artikel kopieren, konfigurierbare Standardstruktur
+- **Mindestmengen- und Ablauf-Alerts** — Dashboard-Widget und roter Sidebar-Badge warnen bei niedrigem Bestand oder baldigen Ablaufdaten (≤ 30 Tage)
+- **Suchintegration** — Lagerartikel werden in der globalen Suche gefunden (Name, Kategorie, Bereich)
+
+---
+
 ## [1.5.0] - 2026-02-28
 
 ### Added

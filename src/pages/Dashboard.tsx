@@ -20,8 +20,10 @@ import {
   Fuel,
   Droplets,
   CheckCircle,
+  Package,
+  Clock,
 } from 'lucide-react'
-import type { MooringStatus, MaintenanceEntry } from '../db/models'
+import type { MooringStatus, MaintenanceEntry, StorageItem } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { db } from '../db/database'
@@ -127,6 +129,24 @@ export function Dashboard() {
 
   const maintenanceAlerts = alertsData.tasks
   const currentEngineHours = alertsData.maxEngineHours
+
+  const storageAlertItems = useLiveQuery(async () => {
+    const soon  = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10)
+    const items = await db.storageItems.toArray()
+    return items
+      .filter(i =>
+        (i.minQuantity != null && i.quantity < i.minQuantity) ||
+        (i.expiryDate  != null && i.expiryDate <= soon)
+      )
+      .slice(0, 5)
+  }) ?? []
+
+  const storageAreaMap = useLiveQuery(async () => {
+    const areas = await db.storageAreas.toArray()
+    const m = new Map<number, string>()
+    areas.forEach(a => { if (a.id != null) m.set(a.id, a.name) })
+    return m
+  }) ?? new Map<number, string>()
 
   function renderDueLabel(dueDate: string) {
     const { label, colorClass } = getDueInfo(dueDate, today)
@@ -434,6 +454,63 @@ export function Dashboard() {
         </div>
 
       </div>
+
+      {/* ── Storage Alerts ── */}
+      <Card>
+        <CardHeader
+          title={t('dashboard.storageAlerts')}
+          icon={storageAlertItems.length > 0
+            ? <AlertTriangle className="w-4 h-4 text-red-500" />
+            : <Package className="w-4 h-4" />
+          }
+          action={
+            <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+              {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        />
+        {storageAlertItems.length > 0 ? (
+          <ul className="space-y-2">
+            {storageAlertItems.map((item: StorageItem) => {
+              const todayStr = new Date().toISOString().slice(0, 10)
+              const expired  = item.expiryDate != null && item.expiryDate < todayStr
+              const lowStock = item.minQuantity != null && item.quantity < item.minQuantity
+              const colorClass = (expired || lowStock)
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+              return (
+                <li
+                  key={item.id}
+                  onClick={() => navigate('/storage')}
+                  className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+                >
+                  {lowStock
+                    ? <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                    : <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                  }
+                  <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                  <span className="text-xs text-gray-400 hidden sm:inline">
+                    {storageAreaMap.get(item.areaId) ?? ''}
+                  </span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
+                    {lowStock
+                      ? `${item.quantity} / ${item.minQuantity} ${item.unit}`
+                      : item.expiryDate}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageAlerts')}</p>
+            <Link to="/storage" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
+              {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+      </Card>
 
       {/* Recent entries list */}
       {recentEntries && recentEntries.length > 0 && (

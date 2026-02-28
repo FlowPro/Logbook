@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Search as SearchIcon, MapPin, FileText, Wrench, X, ChevronRight } from 'lucide-react'
+import { Search as SearchIcon, MapPin, FileText, Wrench, X, ChevronRight, Package } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../db/database'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import type { PassageEntry, LogEntry, MaintenanceEntry } from '../db/models'
+import type { PassageEntry, LogEntry, MaintenanceEntry, StorageItem, StorageArea } from '../db/models'
 
 // ── Query parser ──────────────────────────────────────────────────────────────
 interface ParsedQuery {
@@ -82,6 +82,14 @@ function matchesMaintenance(m: MaintenanceEntry, q: ParsedQuery): boolean {
   return true
 }
 
+function matchesStorage(item: StorageItem, area: StorageArea | undefined, q: ParsedQuery): boolean {
+  if (q.port || q.country || q.bft !== undefined) return false
+  const text = `${item.name} ${item.notes ?? ''} ${item.category} ${area?.name ?? ''}`.toLowerCase()
+  if (q.free && !text.includes(q.free)) return false
+  if (q.cat && !item.category.toLowerCase().includes(q.cat)) return false
+  return true
+}
+
 const MAX = 30
 
 const OPERATORS = [
@@ -124,6 +132,14 @@ export function Search() {
   // Passages and maintenance load only when a query is active
   const passages = useLiveQuery(() => hasQuery ? db.passages.toArray() : [], [hasQuery]) ?? []
   const maintenance = useLiveQuery(() => hasQuery ? db.maintenance.toArray() : [], [hasQuery]) ?? []
+  const storageItems = useLiveQuery(() => hasQuery ? db.storageItems.toArray() : [], [hasQuery]) ?? []
+  const storageAreas = useLiveQuery(() => db.storageAreas.toArray()) ?? []
+
+  const storageAreaMap = useMemo(() => {
+    const m = new Map<number, StorageArea>()
+    storageAreas.forEach(a => { if (a.id != null) m.set(a.id, a) })
+    return m
+  }, [storageAreas])
 
   const filteredPassages = useMemo<PassageEntry[]>(() => {
     if (!hasQuery) return []
@@ -146,7 +162,14 @@ export function Search() {
       .slice(0, MAX)
   }, [maintenance, q, hasQuery])
 
-  const totalResults = filteredPassages.length + filteredEntries.length + filteredMaintenance.length
+  const filteredStorage = useMemo<StorageItem[]>(() => {
+    if (!hasQuery) return []
+    return storageItems
+      .filter(item => matchesStorage(item, storageAreaMap.get(item.areaId), q))
+      .slice(0, MAX)
+  }, [storageItems, storageAreaMap, q, hasQuery])
+
+  const totalResults = filteredPassages.length + filteredEntries.length + filteredMaintenance.length + filteredStorage.length
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -289,6 +312,38 @@ export function Search() {
                     <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   </button>
                 ))}
+              </div>
+            </section>
+          )}
+
+          {/* Storage */}
+          {filteredStorage.length > 0 && (
+            <section>
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Package className="w-3.5 h-3.5" />
+                Lager ({filteredStorage.length}{filteredStorage.length === MAX ? '+' : ''})
+              </h2>
+              <div className="space-y-2">
+                {filteredStorage.map(item => {
+                  const area = storageAreaMap.get(item.areaId)
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => navigate('/storage')}
+                      className="w-full text-left p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{item.name}</div>
+                        <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap mt-0.5">
+                          {area && <span>{area.name}</span>}
+                          <span>{item.quantity} {item.unit}</span>
+                          {item.expiryDate && <span className="text-gray-400">{item.expiryDate}</span>}
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    </button>
+                  )
+                })}
               </div>
             </section>
           )}

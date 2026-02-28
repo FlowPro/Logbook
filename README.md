@@ -98,6 +98,7 @@ Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Clo
 - **Logeinträge** — Position, Kurs, Geschwindigkeit, Wind (Beaufort), Seegang, Barometer, Segelkonfiguration, Motor, Besatzung, Notizen
 - **Passagen** — Port-to-Port-Verwaltung mit automatischer Datumssynchronisation aus Logeinträgen; Sperren nach Abschluss; PDF-Export je Passage
 - **Wartung** — Kanban-Board (Geplant / In Arbeit / Erledigt) mit Drag & Drop, Prioritäten, Fälligkeiten, Checklisten je Aufgabe, wiederkehrende Aufgaben (täglich/wöchentlich/monatlich/jährlich/Motorstunden)
+- **Lagerplan** — Inventar aller Bordmaterialien nach frei konfigurierbaren Bereichen und Fächern; Mindestmengen- und Ablauf-Alerts im Dashboard und Sidebar; Integration in die globale Suche
 - **Besatzung** — Crewliste mit Qualifikationen, Passdaten, Bordzeiten
 - **Statistiken** — Gesegelte Meilen, Windverteilung, Mooringstatus, Saisonübersicht
 - **Karte** — Interaktive Karte aller Logbucheinträge mit GPS-Koordinaten, Routenlinien je Passage, Offline-Karte (Protomaps)
