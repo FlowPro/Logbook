@@ -729,8 +729,8 @@ export function Settings() {
         </button>
         {openSections.has('backup') && (
         <div className="mt-4 space-y-4">
-          {/* Toggle + folder picker — not available on GitHub Pages preview */}
-          {!import.meta.env.VITE_GH_PAGES && (<>
+          {/* Toggle + folder picker — grayed out in demo mode */}
+          <div className={import.meta.env.VITE_GH_PAGES ? 'opacity-50 pointer-events-none select-none' : ''}>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t('settings.autoBackup')}</p>
@@ -805,7 +805,12 @@ export function Settings() {
               {t(isTauri ? 'settings.backupFolderHintApp' : 'settings.backupFolderHint')}
             </p>
           </div>
-          </>)}
+          </div>
+          {import.meta.env.VITE_GH_PAGES && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <Info className="w-3 h-3 flex-shrink-0" />{t('settings.demoNotAvailable')}
+            </p>
+          )}
 
           {/* Manual backup & restore */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
@@ -834,7 +839,12 @@ export function Settings() {
                 </div>
                 <p className="text-xs text-red-500 mt-0.5">{t('export.restoreNote')}</p>
               </div>
-              {!import.meta.env.VITE_GH_PAGES && (
+              {import.meta.env.VITE_GH_PAGES ? (
+                <span className="flex-shrink-0 text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg opacity-40 cursor-not-allowed bg-red-100 dark:bg-red-900/30 text-red-500">
+                  <Upload className="w-3.5 h-3.5" />
+                  {t('common.import')}
+                </span>
+              ) : (
                 <label className="cursor-pointer flex-shrink-0">
                   <span className="btn-danger text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg">
                     <Upload className="w-3.5 h-3.5" />

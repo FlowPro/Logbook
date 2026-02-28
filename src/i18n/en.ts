@@ -500,6 +500,7 @@ const en = {
       tempUnit: 'Temperature Unit',
       darkMode: 'Dark Mode',
       autoBackup: 'Auto Backup',
+      demoNotAvailable: 'Not available in demo mode',
       backup: 'Data Backup',
       shipSection: 'Ship Data',
       nmeaIntegration: 'NMEA Integration',

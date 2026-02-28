@@ -153,7 +153,12 @@ export function FileUpload({
   return (
     <div>
       {label && <label className="label">{label}</label>}
-      {!disabled && (
+      {disabled ? (
+        <div className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center bg-gray-50 dark:bg-gray-800/50">
+          <Upload className="w-8 h-8 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+          <p className="text-sm text-gray-400 dark:text-gray-500">Im Demo-Modus nicht verfügbar</p>
+        </div>
+      ) : (
         <div
           onDrop={handleDrop}
           onDragOver={e => e.preventDefault()}

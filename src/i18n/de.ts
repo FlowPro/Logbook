@@ -497,6 +497,7 @@ const de = {
       tempUnit: 'Temperatureinheit',
       darkMode: 'Dunkelmodus',
       autoBackup: 'Automatische Sicherung',
+      demoNotAvailable: 'Im Demo-Modus nicht verfügbar',
       backup: 'Datensicherung',
       shipSection: 'Schiffsdaten',
       nmeaIntegration: 'NMEA-Integration',
