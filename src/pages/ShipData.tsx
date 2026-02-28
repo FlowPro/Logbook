@@ -50,7 +50,7 @@ type FormData = z.infer<typeof schema>
 
 const DEFAULTS: FormData = {
   name: '', type: 'Segelyacht', manufacturer: '', model: '', yearBuilt: 2000,
-  flag: 'DE', homePort: '', registrationNumber: '', registrationCountry: 'Germany',
+  flag: '', homePort: '', registrationNumber: '', registrationCountry: '',
   mmsi: '', callSign: '', imoNumber: '',
   loaMeters: 0, beamMeters: 0, draftMeters: 0, displacementTons: 0, sailAreaSqm: 0,
   engineType: '', enginePowerKw: 0, fuelCapacityL: 0, fuelType: 'Diesel', waterCapacityL: 0,
