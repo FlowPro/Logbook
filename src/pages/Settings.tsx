@@ -511,10 +511,10 @@ export function Settings() {
           <Select
             label="Standard-Währung (Wartung)"
             options={[
-              'EUR', 'USD', 'GBP', 'CHF', 'SEK', 'NOK', 'DKK',
+              'CHF', 'EUR', 'USD', 'GBP', 'SEK', 'NOK', 'DKK',
               'AUD', 'CAD', 'JPY', 'NZD', 'SGD', 'ZAR', 'BRL',
             ].map(c => ({ value: c, label: c }))}
-            value={settings.defaultCurrency ?? 'EUR'}
+            value={settings.defaultCurrency ?? 'CHF'}
             onChange={e => updateSettings({ defaultCurrency: e.target.value })}
           />
         </div>

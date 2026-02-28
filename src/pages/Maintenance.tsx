@@ -66,7 +66,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 function makeDefaults(currency?: string): FormData {
-  return { description: '', category: 'engine', priority: 'medium', currency: currency ?? 'EUR' }
+  return { description: '', category: 'engine', priority: 'medium', currency: currency ?? 'CHF' }
 }
 
 // ── Helper components ─────────────────────────────────────────────────────────
@@ -434,7 +434,7 @@ export function Maintenance() {
       nextServiceDueDate:   entry.nextServiceDueDate,
       nextServiceDueHours:  entry.nextServiceDueHours,
       cost:                 entry.cost,
-      currency:             entry.currency ?? settings?.defaultCurrency ?? 'EUR',
+      currency:             entry.currency ?? settings?.defaultCurrency ?? 'CHF',
       performedBy:          entry.performedBy,
       notes:                entry.notes,
     })
