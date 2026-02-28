@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.3] - 2026-02-28
+
+### Fixed
+- Windows: WebView2 HTTP-Cache wird beim App-Start automatisch geleert — verhindert, dass nach Updates alte UI-Versionen angezeigt werden (fehlende Einstellungen, falsche Versionsnummer)
+- Tauri: Service-Worker-Caches werden beim Start vollständig bereinigt (Workbox-Caches inkl., Protomaps-Vorab-Download bleibt erhalten)
+
+---
+
 ## [1.4.2] - 2026-02-28
 
 ### Added
