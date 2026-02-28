@@ -39,7 +39,7 @@ Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Clo
 
 ## Live-Demo
 
-**[→ Demo auf GitHub Pages](https://flowpro.github.io/Logbook/)** — sofort im Browser ausprobieren, keine Installation nötig.
+**[Live-Demo](https://flowpro.github.io/Logbook/)** — sofort im Browser ausprobieren, keine Installation nötig.
 
 > **Hinweis:** Dies ist eine öffentliche Demo — bitte keine echten persönlichen Daten (Namen, Passdaten, Koordinaten) eingeben. Daten werden lokal im Browser gespeichert und sind nicht mit anderen Besuchern geteilt. Datei-Upload und automatisches Backup sind im Demo-Modus deaktiviert. Für den vollen Funktionsumfang empfehlen wir die Desktop-App.
 
