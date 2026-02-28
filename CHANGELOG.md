@@ -7,6 +7,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.4.5] - 2026-02-28
+
+### Changed
+- CHF ist jetzt Standard-Währung (Einstellungen > Einheiten, Wartungseinträge)
+- Schiffsdaten: Flagge und Registrierland bei Neuinstallation leer statt «Deutschland»
+- Demo-Modus (GitHub Pages): deaktivierte Features (Datei-Upload, Auto-Backup, Backup-Ordner, Restore) werden sichtbar aber ausgegraut angezeigt statt versteckt
+
+### Docs
+- README: Badges (Version, Lizenz, Plattform, Stack), Inhaltsverzeichnis, Technologie-Tabelle
+- README: Dashboard und Auto-Update in Feature-Liste ergänzt
+
+---
+
 ## [1.4.4] - 2026-02-28
 
 ### Fixed
