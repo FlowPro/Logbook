@@ -135,7 +135,7 @@ export function AppLayout() {
 
   // Daily auto-backup (runs once per calendar day if enabled)
   useEffect(() => {
-    if (!settings?.autoBackup) return
+    if (!settings?.autoBackup || import.meta.env.VITE_GH_PAGES) return
     const now = new Date()
     const today = now.toISOString().split('T')[0]
     // Compare only the date portion of the stored ISO timestamp

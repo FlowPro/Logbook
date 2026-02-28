@@ -729,7 +729,8 @@ export function Settings() {
         </button>
         {openSections.has('backup') && (
         <div className="mt-4 space-y-4">
-          {/* Toggle */}
+          {/* Toggle + folder picker — not available on GitHub Pages preview */}
+          {!import.meta.env.VITE_GH_PAGES && (<>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{t('settings.autoBackup')}</p>
@@ -804,6 +805,7 @@ export function Settings() {
               {t(isTauri ? 'settings.backupFolderHintApp' : 'settings.backupFolderHint')}
             </p>
           </div>
+          </>)}
 
           {/* Manual backup & restore */}
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-3">
