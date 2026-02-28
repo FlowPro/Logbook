@@ -94,6 +94,7 @@ Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Clo
 
 ## Features
 
+- **Dashboard** — Saisonübersicht, KPIs (Meilen, Motorstunden, Passagen), fällige Wartungsaufgaben, letzter Logeintrag auf einen Blick
 - **Logeinträge** — Position, Kurs, Geschwindigkeit, Wind (Beaufort), Seegang, Barometer, Segelkonfiguration, Motor, Besatzung, Notizen
 - **Passagen** — Port-to-Port-Verwaltung mit automatischer Datumssynchronisation aus Logeinträgen; Sperren nach Abschluss; PDF-Export je Passage
 - **Wartung** — Kanban-Board (Geplant / In Arbeit / Erledigt) mit Drag & Drop, Prioritäten, Fälligkeiten, Checklisten je Aufgabe, wiederkehrende Aufgaben (täglich/wöchentlich/monatlich/jährlich/Motorstunden)
@@ -104,6 +105,7 @@ Logbuch ist ein vollständig offline-fähiges Segellogbuch ohne Server, ohne Clo
 - **PDF-Export** — Logbuch (A4 Querformat), Schiffsdossier, Besatzungsliste, Zollerklärung, Crew-Einweisungsprotokoll
 - **NMEA-Bridge** — Liest Live-Daten vom Bordsystem (GPS, Wind, Log) via TCP/UDP und überträgt sie per WebSocket
 - **Backup** — Automatisches tägliches Backup als ZIP; manueller Export/Import
+- **Auto-Update** — Desktop-App prüft beim Start auf neue Versionen und installiert Updates im Hintergrund
 - **Mehrsprachig** — Deutsch / Englisch
 - **Dark Mode** — Systemeinstellung oder manuell
 
