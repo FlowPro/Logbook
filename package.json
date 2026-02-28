@@ -53,6 +53,9 @@
     "ws": "^8.19.0",
     "zod": "^3.24.1"
   },
+  "overrides": {
+    "serialize-javascript": "^7.0.3"
+  },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
     "@types/node": "^25.3.0",
