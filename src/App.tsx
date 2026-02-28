@@ -1,5 +1,8 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+
+// GitHub Pages uses HashRouter (no server-side routing) — all other environments use BrowserRouter
+const Router = import.meta.env.VITE_GH_PAGES ? HashRouter : BrowserRouter
 import { AppLayout } from './components/layout/AppLayout'
 import { Dashboard } from './pages/Dashboard'
 import { LogEntryForm } from './pages/LogEntryForm'
@@ -23,7 +26,7 @@ function App() {
   }, [])
 
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
@@ -44,7 +47,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </BrowserRouter>
+    </Router>
   )
 }
 

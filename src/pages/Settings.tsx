@@ -825,13 +825,15 @@ export function Settings() {
                 </div>
                 <p className="text-xs text-red-500 mt-0.5">{t('export.restoreNote')}</p>
               </div>
-              <label className="cursor-pointer flex-shrink-0">
-                <span className="btn-danger text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg">
-                  <Upload className="w-3.5 h-3.5" />
-                  {t('common.import')}
-                </span>
-                <input type="file" accept=".zip,.json" onChange={handleRestoreSelect} className="hidden" />
-              </label>
+              {!import.meta.env.VITE_GH_PAGES && (
+                <label className="cursor-pointer flex-shrink-0">
+                  <span className="btn-danger text-xs flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg">
+                    <Upload className="w-3.5 h-3.5" />
+                    {t('common.import')}
+                  </span>
+                  <input type="file" accept=".zip,.json" onChange={handleRestoreSelect} className="hidden" />
+                </label>
+              )}
             </div>
           </div>
         </div>

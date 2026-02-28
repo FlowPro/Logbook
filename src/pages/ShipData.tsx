@@ -231,6 +231,7 @@ export function ShipData({ embedded = false }: ShipDataProps) {
             attachments={documents}
             onUpload={(att) => setDocuments(prev => [...prev, att])}
             onRemove={(idx) => setDocuments(prev => prev.filter((_, i) => i !== idx))}
+            disabled={!!import.meta.env.VITE_GH_PAGES}
             accept="image/*,application/pdf"
             multiple
           />

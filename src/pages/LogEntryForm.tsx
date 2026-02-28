@@ -941,6 +941,7 @@ export function LogEntryForm() {
             attachments={attachments}
             onUpload={(att) => setAttachments(prev => [...prev, att])}
             onRemove={(idx) => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+            disabled={!!import.meta.env.VITE_GH_PAGES}
             accept="image/*,application/pdf"
             multiple
           />

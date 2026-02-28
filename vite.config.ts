@@ -72,6 +72,8 @@ function bridgeControlPlugin() {
 // ── Vite Config ───────────────────────────────────────────────────────────────
 
 export default defineConfig({
+  // GitHub Pages deploys to /Logbook/ — set base accordingly
+  base: process.env.VITE_GH_PAGES ? '/Logbook/' : '/',
   plugins: [
     react(),
     bridgeControlPlugin(),

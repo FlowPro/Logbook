@@ -299,6 +299,7 @@ export function CrewManagement() {
             </div>
             <FileUpload
               label={t('crew.passportCopy')}
+              disabled={!!import.meta.env.VITE_GH_PAGES}
               attachments={passportCopy ? [{
                 id: '1',
                 name: passportCopy.startsWith('data:application/pdf') ? 'TravelDocument.pdf' : 'TravelDocument.jpg',

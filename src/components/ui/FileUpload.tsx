@@ -9,6 +9,7 @@ interface FileUploadProps {
   attachments?: DocumentAttachment[]
   accept?: string
   multiple?: boolean
+  disabled?: boolean
 }
 
 function AttachmentLightbox({ att, onClose }: { att: DocumentAttachment; onClose: () => void }) {
@@ -98,6 +99,7 @@ export function FileUpload({
   attachments = [],
   accept = '*/*',
   multiple = false,
+  disabled = false,
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [viewing, setViewing] = useState<DocumentAttachment | null>(null)
@@ -151,26 +153,28 @@ export function FileUpload({
   return (
     <div>
       {label && <label className="label">{label}</label>}
-      <div
-        onDrop={handleDrop}
-        onDragOver={e => e.preventDefault()}
-        onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer
-                   hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
-      >
-        <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Datei hier ablegen oder klicken zum Auswählen
-        </p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={accept}
-          multiple={multiple}
-          onChange={handleChange}
-          className="hidden"
-        />
-      </div>
+      {!disabled && (
+        <div
+          onDrop={handleDrop}
+          onDragOver={e => e.preventDefault()}
+          onClick={() => inputRef.current?.click()}
+          className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer
+                     hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+        >
+          <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Datei hier ablegen oder klicken zum Auswählen
+          </p>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            multiple={multiple}
+            onChange={handleChange}
+            className="hidden"
+          />
+        </div>
+      )}
 
       {attachments.length > 0 && (
         <ul className="mt-3 space-y-2">
