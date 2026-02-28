@@ -148,6 +148,14 @@ button:not([disabled]):active {
   transition: transform 80ms ease;
 }
 
+/* ── Night mode (red) ────────────────────────────────────────────────────────
+   Requires .dark class also active (dark backgrounds + red tint on everything).
+   CSS filter pipeline: desaturate → sepia (warm tones) → hue-shift to red →
+   boost saturation → darken slightly. Preserves dark-adapted night vision.     */
+html.night {
+  filter: brightness(var(--night-brightness, 0.45)) sepia(1) saturate(4) hue-rotate(315deg);
+}
+
 /* Print styles */
 @media print {
   .no-print {

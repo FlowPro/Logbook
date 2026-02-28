@@ -1,9 +1,9 @@
-import { Menu, Moon, Sun, Globe, Wifi, WifiOff } from 'lucide-react'
+import { Menu, Moon, Sun, Monitor, Eye, Globe, Wifi, WifiOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../../hooks/useSettings'
 import { useNMEAContext } from '../../contexts/NMEAContext'
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -21,6 +21,10 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
   // Re-check data freshness every 15 s so the badge updates promptly when data goes stale
   const [tick, setTick] = useState(0)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Ping-pong direction for theme cycle: system ↔ light ↔ dark ↔ night
+  // Prevents jumping from night (red/dark) directly to system/light (bright)
+  const themeDirRef = useRef<1 | -1>(1)
   useEffect(() => {
     if (!settings?.nmeaEnabled) return
     tickRef.current = setInterval(() => setTick(n => n + 1), 15_000)
@@ -44,10 +48,6 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
       window.removeEventListener('offline', handleOffline)
     }
   }, [])
-
-  function toggleDarkMode() {
-    updateSettings({ darkMode: !settings?.darkMode })
-  }
 
   function toggleLanguage() {
     updateSettings({ language: settings?.language === 'de' ? 'en' : 'de' })
@@ -142,18 +142,28 @@ export function Header({ onMenuToggle, title }: HeaderProps) {
           </span>
         </button>
 
-        {/* Dark mode toggle */}
-        <button
-          onClick={toggleDarkMode}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
-          title={settings?.darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {settings?.darkMode ? (
-            <Sun className="w-4 h-4" />
-          ) : (
-            <Moon className="w-4 h-4" />
-          )}
-        </button>
+        {/* Theme ping-pong button — bounces system ↔ light ↔ dark ↔ night ↔ dark ↔ light ↔ system */}
+        {(() => {
+          const MODES = ['system', 'light', 'dark', 'night'] as const
+          type Mode = typeof MODES[number]
+          const ICONS: Record<Mode, React.ElementType> = { system: Monitor, light: Sun, dark: Moon, night: Eye }
+          const LABELS: Record<Mode, string> = { system: 'System', light: 'Hell', dark: 'Dunkel', night: 'Nacht' }
+          const current: Mode = (settings?.themeMode as Mode) ?? (settings?.darkMode ? 'dark' : 'system')
+          const idx = MODES.indexOf(current)
+          // Determine direction for the next click without mutating yet
+          const nextDir: 1 | -1 = idx === MODES.length - 1 ? -1 : idx === 0 ? 1 : themeDirRef.current
+          const next = MODES[idx + nextDir]
+          const Icon = ICONS[current]
+          return (
+            <button
+              onClick={() => { themeDirRef.current = nextDir; updateSettings({ themeMode: next }) }}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400 transition-colors"
+              title={`${LABELS[current]} → ${LABELS[next]}`}
+            >
+              <Icon className="w-4 h-4" />
+            </button>
+          )
+        })()}
       </div>
     </header>
   )

@@ -280,6 +280,7 @@ export type DistanceUnit = 'nm' | 'km'
 export type SpeedUnit = 'kts' | 'kmh' | 'ms'
 export type TempUnit = 'celsius' | 'fahrenheit'
 export type Language = 'de' | 'en'
+export type ThemeMode = 'system' | 'light' | 'dark' | 'night'
 
 export interface AppSettings {
   id?: number
@@ -287,7 +288,9 @@ export interface AppSettings {
   distanceUnit: DistanceUnit
   speedUnit: SpeedUnit
   tempUnit: TempUnit
-  darkMode: boolean
+  darkMode: boolean        // kept for migration; use themeMode going forward
+  themeMode?: ThemeMode   // 'system' | 'light' | 'dark' | 'night'
+  nightBrightness?: number // 15–70, default 45 (percent for CSS filter brightness)
   autoBackup: boolean
   lastBackupDate?: string // ISO datetime of last auto-backup
   defaultCurrency?: string // e.g. 'EUR', 'USD'

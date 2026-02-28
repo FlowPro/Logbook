@@ -132,14 +132,33 @@ export function AppLayout() {
     return () => clearInterval(id)
   }, [settings?.nmeaEnabled])
 
-  // Apply dark mode on settings change
+  // Keep --night-brightness CSS variable in sync with the stored setting
   useEffect(() => {
-    if (settings?.darkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
+    const pct = settings?.nightBrightness ?? 45
+    document.documentElement.style.setProperty('--night-brightness', String(pct / 100))
+  }, [settings?.nightBrightness])
+
+  // Apply theme: follows system preference, manual override, or red night mode.
+  // Migration: if themeMode is not yet set, fall back to the legacy darkMode boolean.
+  useEffect(() => {
+    const html = document.documentElement
+    const mode = settings?.themeMode ?? (settings?.darkMode ? 'dark' : 'system')
+
+    function apply(prefersDark: boolean) {
+      const isDark = mode === 'dark' || mode === 'night' || (mode === 'system' && prefersDark)
+      html.classList.toggle('dark', isDark)
+      html.classList.toggle('night', mode === 'night')
     }
-  }, [settings?.darkMode])
+
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    apply(mq.matches)
+
+    if (mode === 'system') {
+      const listener = (e: MediaQueryListEvent) => apply(e.matches)
+      mq.addEventListener('change', listener)
+      return () => mq.removeEventListener('change', listener)
+    }
+  }, [settings?.themeMode, settings?.darkMode])
 
   // Daily auto-backup (runs once per calendar day if enabled)
   useEffect(() => {

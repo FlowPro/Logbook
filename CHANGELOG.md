@@ -7,6 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.5.0] - 2026-02-28
+
+### Added
+- **Nacht-Modus (rot)** — neuer Theme-Modus mit rotem CSS-Filter; erhält die Dunkeladaptation der Augen bei Nachtwachen; Helligkeits-Slider (15–70 %, Default 45 %) in den Einstellungen
+- **System Dark Mode** — Erscheinungsbild folgt automatisch der Betriebssystem-Einstellung (live, reagiert auch während der App läuft)
+- **Theme-Switcher im Header** — Ping-Pong-Cycle (System ↔ Hell ↔ Dunkel ↔ Nacht) verhindert den direkten Sprung von Nacht-Rot auf helles Weiss; Tooltip zeigt nächsten Schritt
+- **Einstellungen Erscheinungsbild** — Segmented Control mit 4 Modi (System / Hell / Dunkel / Nacht) ersetzt den einfachen Toggle
+- **Auto-Update beim Start** — App prüft 5 s nach Start stumm auf neue Versionen und zeigt Toast mit «Installieren»-Button
+
+### Fixed
+- **Windows ERR_FAILED beim Start** — WebView2 zeigt manchmal die Fehlerseite «tauri.localhost nicht erreichbar» wegen einer Race Condition; App erkennt dies nach 1 s und lädt automatisch neu
+- **NMEA Auto-Connect** — Bridge verbindet sich jetzt auch automatisch wenn der Bridge-Prozess beim App-Start bereits läuft; Fallback auf `POST /api/connect` wenn kein Geräte-Host in Dexie gespeichert ist
+
+---
+
 ## [1.4.6] - 2026-02-28
 
 ### Added

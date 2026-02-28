@@ -65,6 +65,24 @@ pub fn run() {
                      .then(function(r){r.forEach(function(s){s.unregister()})})"
                 );
             }
+
+            // Windows: WebView2 occasionally fails to load http://tauri.localhost/ on startup
+            // due to a race between window creation and custom protocol handler registration.
+            // After 1 s, check whether React has rendered into #root. If not (error page or
+            // blank page), trigger a reload — by then the protocol handler is always ready.
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
+                    let _ = window.eval(
+                        "(function(){\
+                            var r=document.getElementById('root');\
+                            if(!r||!r.firstChild){window.location.reload();}\
+                         })()"
+                    );
+                });
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())

@@ -4,7 +4,7 @@ import type { Update } from '@tauri-apps/plugin-updater'
 declare const __APP_VERSION__: string
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
-import { Moon, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink, Map, Anchor } from 'lucide-react'
+import { Moon, Sun, Monitor, Eye, Globe, Ruler, Info, AlertTriangle, Trash2, FolderOpen, FolderX, Clock, Wifi, ChevronDown, Download, Upload, RefreshCw, CheckCircle, ExternalLink, Map, Anchor } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
 import { useSettings } from '../hooks/useSettings'
@@ -443,25 +443,65 @@ export function Settings() {
           <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${openSections.has('appearance') ? 'rotate-180' : ''}`} />
         </button>
         {openSections.has('appearance') && (
-        <div className="mt-4 flex items-center justify-between">
-          <div>
-            <p className="font-medium">{t('settings.darkMode')}</p>
-            <p className="text-sm text-gray-500">{t('settings.darkModeHint')}</p>
+          <div className="mt-4 space-y-3">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('settings.colorScheme')}</p>
+            {(() => {
+              const currentMode = settings?.themeMode ?? (settings?.darkMode ? 'dark' : 'system')
+              const options = [
+                { value: 'system', icon: Monitor, label: t('settings.themeSystem') },
+                { value: 'light',  icon: Sun,     label: t('settings.themeLight')  },
+                { value: 'dark',   icon: Moon,    label: t('settings.themeDark')   },
+                { value: 'night',  icon: Eye,     label: t('settings.themeNight')  },
+              ] as const
+              return (
+                <div className="grid grid-cols-4 gap-1 p-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                  {options.map(({ value, icon: Icon, label }) => {
+                    const active = currentMode === value
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => updateSettings({ themeMode: value })}
+                        className={`flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-lg text-xs font-medium transition-all ${
+                          active
+                            ? value === 'night'
+                              ? 'bg-red-950 text-red-300 shadow-sm ring-1 ring-red-800'
+                              : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+            {/* Night brightness slider — only visible when night mode is active */}
+            {(settings?.themeMode ?? (settings?.darkMode ? 'dark' : 'system')) === 'night' && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{t('settings.nightBrightness')}</span>
+                  <span className="text-sm font-medium text-red-400">{settings?.nightBrightness ?? 45}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={70}
+                  step={5}
+                  value={settings?.nightBrightness ?? 45}
+                  onChange={e => updateSettings({ nightBrightness: Number(e.target.value) })}
+                  className="w-full accent-red-600"
+                />
+                <div className="flex justify-between text-xs text-gray-400">
+                  <span>{t('settings.nightDarker')}</span>
+                  <span>{t('settings.nightBrighter')}</span>
+                </div>
+              </div>
+            )}
+            <p className="text-xs text-gray-500 dark:text-gray-400">{t('settings.themeNightHint')}</p>
           </div>
-          <button
-            onClick={() => updateSettings({ darkMode: !settings.darkMode })}
-            className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${
-              settings.darkMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                settings.darkMode ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
-            <span className="sr-only">Toggle dark mode</span>
-          </button>
-        </div>
         )}
       </Card>
 
