@@ -82,6 +82,19 @@ const AREA_BADGE: Record<string, string> = {
   orange: 'border-orange-500 bg-orange-50 dark:bg-orange-950/50 text-orange-800 dark:text-orange-200',
 }
 
+const AREA_HEADER: Record<string, string> = {
+  slate:  'bg-slate-500  dark:bg-slate-600',
+  blue:   'bg-blue-600   dark:bg-blue-700',
+  amber:  'bg-amber-500  dark:bg-amber-600',
+  green:  'bg-green-600  dark:bg-green-700',
+  red:    'bg-red-600    dark:bg-red-700',
+  purple: 'bg-purple-600 dark:bg-purple-700',
+  pink:   'bg-pink-500   dark:bg-pink-600',
+  teal:   'bg-teal-600   dark:bg-teal-700',
+  indigo: 'bg-indigo-600 dark:bg-indigo-700',
+  orange: 'bg-orange-500 dark:bg-orange-600',
+}
+
 const ITEM_BADGE: Record<string, string> = {
   slate:  'bg-slate-100  text-slate-700  dark:bg-slate-800  dark:text-slate-300',
   blue:   'bg-blue-100   text-blue-700   dark:bg-blue-900/40  dark:text-blue-300',
@@ -93,6 +106,19 @@ const ITEM_BADGE: Record<string, string> = {
   teal:   'bg-teal-100   text-teal-700   dark:bg-teal-900/40  dark:text-teal-300',
   indigo: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
   orange: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+}
+
+const SECTION_STRIPE: Record<string, string> = {
+  slate:  'bg-slate-100  text-slate-700  dark:bg-slate-800/80  dark:text-slate-300',
+  blue:   'bg-blue-100   text-blue-800   dark:bg-blue-900/60   dark:text-blue-200',
+  amber:  'bg-amber-100  text-amber-800  dark:bg-amber-900/60  dark:text-amber-200',
+  green:  'bg-green-100  text-green-800  dark:bg-green-900/60  dark:text-green-200',
+  red:    'bg-red-100    text-red-800    dark:bg-red-900/60    dark:text-red-200',
+  purple: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-200',
+  pink:   'bg-pink-100   text-pink-800   dark:bg-pink-900/60   dark:text-pink-200',
+  teal:   'bg-teal-100   text-teal-800   dark:bg-teal-900/60   dark:text-teal-200',
+  indigo: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/60 dark:text-indigo-200',
+  orange: 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200',
 }
 
 function areaBadgeClass(color?: string) {
@@ -143,13 +169,11 @@ function isExpiringSoon(item: StorageItem) {
 
 function ItemCard({
   item,
-  areaColor,
   onEdit,
   onDelete,
   onCopy,
 }: {
   item: StorageItem
-  areaColor?: string
   onEdit: () => void
   onDelete: () => void
   onCopy: () => void
@@ -163,23 +187,22 @@ function ItemCard({
     <div className="card p-3 flex flex-col gap-2">
       {/* Name + actions */}
       <div className="flex items-start gap-1.5">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate leading-snug">
-            {item.name}
-          </p>
-          <span className={`inline-block mt-0.5 text-xs px-1.5 py-0.5 rounded-full font-medium ${itemBadgeClass(areaColor)}`}>
-            {t(`storage.categories.${item.category}`)}
-          </span>
-        </div>
-        <div className="flex gap-0.5 flex-shrink-0 -mt-0.5">
-          <button onClick={onEdit}   title={t('common.edit')}       className="p-1 text-gray-400 hover:text-blue-600  dark:hover:text-blue-400  rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Pencil  className="w-3.5 h-3.5" /></button>
-          <button onClick={onCopy}   title={t('storage.copyItem')}  className="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Copy    className="w-3.5 h-3.5" /></button>
-          <button onClick={onDelete} title={t('common.delete')}     className="p-1 text-gray-400 hover:text-red-600   dark:hover:text-red-400   rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"><Trash2  className="w-3.5 h-3.5" /></button>
+        <p className="text-sm font-semibold leading-snug flex-1 min-w-0 break-words text-gray-900 dark:text-gray-100">
+          {item.name}
+        </p>
+        <div className="flex gap-0.5 flex-shrink-0 ml-1">
+          <button onClick={onEdit}   title={t('common.edit')}       className="p-1 rounded text-gray-400 hover:text-blue-600  hover:bg-blue-50  dark:hover:bg-blue-950  transition-colors"><Pencil  className="w-3 h-3" /></button>
+          <button onClick={onCopy}   title={t('storage.copyItem')}  className="p-1 rounded text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-950 transition-colors"><Copy    className="w-3 h-3" /></button>
+          <button onClick={onDelete} title={t('common.delete')}     className="p-1 rounded text-gray-400 hover:text-red-600   hover:bg-red-50   dark:hover:bg-red-950   transition-colors"><Trash2  className="w-3 h-3" /></button>
         </div>
       </div>
 
-      {/* Quantity */}
+      {/* Category + quantity */}
       <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+          {CAT_EMOJI[item.category] ?? '📦'} {t(`storage.categories.${item.category}`)}
+        </span>
+        <span className="text-[10px] text-gray-300 dark:text-gray-600">·</span>
         <span className="text-sm font-mono font-medium text-gray-700 dark:text-gray-300">
           {item.quantity} {item.unit}
         </span>
@@ -191,26 +214,19 @@ function ItemCard({
         )}
       </div>
 
-      {/* Expiry */}
-      {item.expiryDate && (
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3 text-gray-400 flex-shrink-0" />
-          <span className={`text-xs ${
-            expired ? 'text-red-600 dark:text-red-400 font-semibold' :
-            soon    ? 'text-amber-600 dark:text-amber-400 font-semibold' :
-                      'text-gray-500 dark:text-gray-400'
-          }`}>
-            {item.expiryDate}
-            {expired && ` · ${t('storage.expired')}`}
-            {!expired && soon && ` · ${t('storage.expiringSoon')}`}
-          </span>
-        </div>
-      )}
-
-      {/* Notes */}
-      {item.notes && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 italic line-clamp-1">{item.notes}</p>
-      )}
+      {/* Expiry — always rendered for consistent card height */}
+      <span className={`flex items-center gap-1 text-[11px] font-medium ${
+        expired ? 'text-red-600 dark:text-red-400' :
+        soon    ? 'text-amber-600 dark:text-amber-400' :
+        item.expiryDate ? 'text-gray-500 dark:text-gray-400' :
+                          'text-gray-300 dark:text-gray-600'
+      }`}>
+        <Clock className="w-3 h-3 flex-shrink-0" />
+        {item.expiryDate
+          ? `${expired ? `${t('storage.expired')} ` : ''}${item.expiryDate}`
+          : '—'
+        }
+      </span>
     </div>
   )
 }
@@ -689,6 +705,7 @@ export function Storage() {
 
   const [activeAreaId,    setActiveAreaId]    = useState<number | 'all'>('all')
   const [search,          setSearch]          = useState('')
+  const [alertFilter,     setAlertFilter]     = useState<'all' | 'alerts' | 'expired' | 'expiringSoon' | 'lowStock'>('all')
   const [modalOpen,       setModalOpen]       = useState(false)
   const [editingItem,     setEditingItem]     = useState<StorageItem | null>(null)
   const [manageAreasOpen, setManageAreasOpen] = useState(false)
@@ -731,6 +748,10 @@ export function Storage() {
 
     const filtered = items.filter(item => {
       if (activeAreaId !== 'all' && item.areaId !== activeAreaId) return false
+      if (alertFilter === 'alerts'      && !isExpired(item) && !isExpiringSoon(item) && !isLowStock(item)) return false
+      if (alertFilter === 'expired'     && !isExpired(item))     return false
+      if (alertFilter === 'expiringSoon' && !isExpiringSoon(item)) return false
+      if (alertFilter === 'lowStock'    && !isLowStock(item))    return false
       if (q) {
         const area = areaMap.get(item.areaId)
         const sec  = item.sectionId ? sectionMap.get(item.sectionId) : undefined
@@ -775,7 +796,7 @@ export function Storage() {
     }
 
     return result
-  }, [items, areas, activeAreaId, search, areaMap, sectionMap, sectionsByArea])
+  }, [items, areas, activeAreaId, alertFilter, search, areaMap, sectionMap, sectionsByArea])
 
   function openAdd() { setEditingItem(null); setModalOpen(true) }
   function openEdit(item: StorageItem) { setEditingItem(item); setModalOpen(true) }
@@ -848,6 +869,19 @@ export function Storage() {
           )}
         </div>
 
+        {/* Alert filter */}
+        <select
+          value={alertFilter}
+          onChange={e => setAlertFilter(e.target.value as typeof alertFilter)}
+          className={`px-2 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors flex-shrink-0 ${alertFilter !== 'all' ? 'border-amber-500 dark:border-amber-400 text-amber-700 dark:text-amber-300' : ''}`}
+        >
+          <option value="all">{t('common.all')}</option>
+          <option value="alerts">{t('storage.allAlerts')}</option>
+          <option value="expired">{t('storage.expired')}</option>
+          <option value="expiringSoon">{t('storage.expiringSoon')}</option>
+          <option value="lowStock">{t('storage.lowStock')}</option>
+        </select>
+
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
         <button
           onClick={() => setManageAreasOpen(true)}
@@ -891,45 +925,35 @@ export function Storage() {
               else next.add(area.id!)
               return next
             })
+            const headerClass = AREA_HEADER[area.color ?? 'slate'] ?? AREA_HEADER.slate
             return (
-              <div key={area.id} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                {/* Area header — always shown as collapsible */}
+              <div key={area.id} className="rounded-xl overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
+                {/* Area header — solid color, white text */}
                 <button
                   onClick={toggleArea}
-                  className={`w-full flex items-center gap-2 px-4 py-3 text-left border-l-4 ${areaBadgeClass(area.color)} hover:brightness-95 transition-all`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left text-white ${headerClass} hover:brightness-95 transition-all`}
                 >
                   <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
                   <span className="font-semibold text-sm flex-1">{area.name}</span>
-                  <span className="text-xs opacity-60">{totalCount} Artikel</span>
+                  <span className="text-xs bg-white/20 rounded-full px-2 py-0.5 tabular-nums">{totalCount}</span>
                 </button>
 
-                {/* Section groups — hidden when collapsed */}
+                {/* Items grid */}
                 {!isCollapsed && (
-                  <div className="p-4 space-y-5">
-                    {groups.map(({ section, items: groupItems }) => (
-                      <div key={section?.id ?? 'none'} className="space-y-2">
-                        {/* Section header */}
-                        <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider px-1 pb-1.5 border-b border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorDotClass(area.color)}`} />
-                          {section?.name ?? t('storage.noCompartment')}
-                          <span className="font-normal normal-case text-gray-400 dark:text-gray-500">({groupItems.length})</span>
-                        </h3>
-
-                        {/* Items grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {groupItems.map(item => (
-                            <ItemCard
-                              key={item.id}
-                              item={item}
-                              areaColor={areaMap.get(item.areaId)?.color}
-                              onEdit={() => openEdit(item)}
-                              onDelete={() => setDeleteConfirmId(item.id!)}
-                              onCopy={() => handleCopy(item)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="p-4 bg-white dark:bg-gray-900">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {groups.flatMap(({ items: groupItems }) =>
+                        groupItems.map(item => (
+                          <ItemCard
+                            key={item.id}
+                            item={item}
+                            onEdit={() => openEdit(item)}
+                            onDelete={() => setDeleteConfirmId(item.id!)}
+                            onCopy={() => handleCopy(item)}
+                          />
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

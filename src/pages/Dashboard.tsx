@@ -22,6 +22,7 @@ import {
   CheckCircle,
   Package,
   Clock,
+  Route,
 } from 'lucide-react'
 import type { MooringStatus, MaintenanceEntry, StorageItem, LogEntry, Coordinate } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
@@ -115,7 +116,8 @@ export function Dashboard() {
   const activeCrew = useLiveQuery(() =>
     db.crew.filter(c => c.isActive).toArray()
   )
-  const totalEntries = useLiveQuery(() => db.logEntries.count())
+  const totalEntries   = useLiveQuery(() => db.logEntries.count())
+  const totalPassages  = useLiveQuery(() => db.passages.count())
 
   const totalDistance = useLiveQuery(async () => {
     let sum = 0
@@ -152,13 +154,26 @@ export function Dashboard() {
   const currentEngineHours = alertsData.maxEngineHours
 
   const storageAlertItems = useLiveQuery(async () => {
+    const today = new Date().toISOString().slice(0, 10)
     const soon  = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10)
     const items = await db.storageItems.toArray()
+    const priority = (i: StorageItem): number => {
+      if (i.expiryDate && i.expiryDate < today) return 0  // expired
+      if (i.expiryDate && i.expiryDate <= soon) return 1  // expiring soon
+      return 2                                             // low stock only
+    }
     return items
       .filter(i =>
         (i.minQuantity != null && i.quantity < i.minQuantity) ||
         (i.expiryDate  != null && i.expiryDate <= soon)
       )
+      .sort((a, b) => {
+        const pa = priority(a), pb = priority(b)
+        if (pa !== pb) return pa - pb
+        // Within same priority: sort by expiryDate ascending (oldest/soonest first)
+        if (a.expiryDate && b.expiryDate) return a.expiryDate.localeCompare(b.expiryDate)
+        return 0
+      })
       .slice(0, 5)
   }) ?? []
 
@@ -236,21 +251,21 @@ export function Dashboard() {
             clickable
           />
         </Link>
+        <Link to="/ports" className="block">
+          <StatCard
+            icon={<Route className="w-5 h-5" />}
+            label={t('dashboard.totalPassages')}
+            value={String(totalPassages ?? 0)}
+            color="purple"
+            clickable
+          />
+        </Link>
         <StatCard
           icon={<Navigation className="w-5 h-5" />}
           label={t('dashboard.totalDistance')}
           value={`${fmtNum(totalDistance ?? 0)} nm`}
           color="green"
         />
-        <Link to="/crew" className="block">
-          <StatCard
-            icon={<Users className="w-5 h-5" />}
-            label={t('dashboard.crewOnBoard')}
-            value={String(activeCrew?.length ?? 0)}
-            color="purple"
-            clickable
-          />
-        </Link>
         <Link to="/settings#ship" className="block">
           <div className="card p-4 hover:shadow-md transition-shadow">
             <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
@@ -407,7 +422,7 @@ export function Dashboard() {
                       }
                       <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
                       <span className="text-xs text-gray-400 hidden sm:inline">
-                        {storageAreaMap.get(item.areaId) ?? ''}
+                        {storageAreaMap?.get(item.areaId) ?? ''}
                       </span>
                       <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
                         {lowStock

@@ -7,6 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.4] - 2026-03-01
+
+### Added
+- **Lagerplan**: Alert-Filter im Toolbar — Optionen: Alle / Alle Mängel / Abgelaufen / Läuft bald ab / Niedrig; aktiver Filter wird amber hervorgehoben
+- **Lagerplan**: Bereich-Header als vollfarbiger Balken (Bereichsfarbe, weisse Schrift) statt linkem Rahmen — stärkere visuelle Gliederung
+- **Dashboard**: Kachel «Passagen» ersetzt «Crew an Bord» (Gesamtanzahl Passagen, klickbar → Port Log)
+
+### Changed
+- **Lagerplan**: Artikel-Karten einheitliche Höhe — Notizen ausgeblendet, Ablaufdatum immer sichtbar (`—` wenn keins gesetzt)
+- **Dashboard**: Reihenfolge der obersten Kacheln: Logeinträge → Passagen → Gesamtstrecke → Schiff
+- **Dashboard**: Lager-Warnung sortiert abgelaufene Artikel zuerst (ältestes Ablaufdatum ganz oben)
+
+---
+
 ## [1.8.3] - 2026-03-01
 
 ### Fixed

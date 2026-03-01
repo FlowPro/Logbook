@@ -8,7 +8,7 @@ import { z } from 'zod'
 import {
   PlusCircle, Edit, Trash2, MapPin, CheckCircle, XCircle, Save,
   ChevronDown, ChevronUp, Navigation, Wind, Gauge, Anchor, Zap, FileDown,
-  Building2, CircleDot, GitCommitHorizontal, Lock, Unlock, Archive, Map as MapIcon,
+  Building2, CircleDot, GitCommitHorizontal, Lock, Unlock, Archive, Map as MapIcon, Eye, EyeOff,
 } from 'lucide-react'
 import type { MooringStatus } from '../db/models'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -752,13 +752,13 @@ export function PortLog() {
             onClick={() => setShowLocked(v => !v)}
             className={`flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border transition-colors ${
               showLocked
-                ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
             }`}
-            title={showLocked ? 'Gesperrte Passagen ausblenden' : 'Gesperrte Passagen anzeigen'}
+            title={showLocked ? t('portLog.hideArchive') : t('portLog.showArchive', { count: lockedCount })}
           >
-            <Lock className="w-3.5 h-3.5" />
-            {showLocked ? 'Gesperrte ausbl.' : `Gesperrt (${lockedCount})`}
+            {showLocked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showLocked ? t('portLog.hideArchive') : t('portLog.showArchive', { count: lockedCount })}
           </button>
         )}
         {filterYear !== 'all' && (
@@ -768,11 +768,11 @@ export function PortLog() {
             className={`flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border transition-colors disabled:cursor-default ${
               seasonFullyLocked
                 ? 'border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/40'
-                : 'border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950 disabled:opacity-50'
+                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50'
             }`}
             title={seasonFullyLocked ? t('portLog.seasonsAllLocked', { year: filterYear }) : t('portLog.lockSeasonTitle', { year: filterYear })}
           >
-            {seasonFullyLocked ? <Lock className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+            {seasonFullyLocked ? <Archive className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
             {seasonFullyLocked ? t('portLog.seasonLockedBtn', { year: filterYear }) : t('portLog.lockSeasonBtn', { year: filterYear })}
           </button>
         )}
