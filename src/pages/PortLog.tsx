@@ -570,9 +570,11 @@ export function PortLog() {
     let list = filterYear !== 'all'
       ? passages.filter(p => p.departureDate?.startsWith(filterYear))
       : passages
-    // In "all years" view, hide locked passages unless the user opts in
+    // In "all years" view, hide locked passages unless the user opts in —
+    // but only when there are also unlocked passages; if everything is locked show all.
     if (filterYear === 'all' && !showLocked) {
-      list = list.filter(p => !p.locked)
+      const unlocked = list.filter(p => !p.locked)
+      if (unlocked.length > 0) list = unlocked
     }
     return list
   }, [passages, filterYear, showLocked])

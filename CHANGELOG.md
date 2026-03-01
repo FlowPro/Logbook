@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.1] - 2026-03-01
+
+### Fixed
+- **PortLog**: When all passages are locked, the "all years" view no longer shows an empty list — locked passages are displayed automatically when no unlocked ones exist
+- **Demo data**: `fuelLevelL` and `waterLevelL` were stored as raw litre values (0–635) instead of percentages (0–100), causing the dashboard to show e.g. "3759 L / 635 L" at 592%; corrected in both demo backups
+
+---
+
 ## [1.7.0] - 2026-03-01
 
 ### Added
