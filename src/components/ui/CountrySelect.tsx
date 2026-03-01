@@ -201,6 +201,18 @@ const COUNTRIES: Country[] = [
   { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' },
 ]
 
+/** Returns the ISO 3166-1 alpha-2 code for a given country name or code. */
+export function getCountryCode(nameOrCode: string): string | undefined {
+  if (!nameOrCode) return undefined
+  return (COUNTRIES.find(c => c.code === nameOrCode) ?? COUNTRIES.find(c => c.name === nameOrCode))?.code
+}
+
+/** Returns the display name for a given country name or code (handles legacy code-stored values). */
+export function getCountryName(nameOrCode: string): string {
+  if (!nameOrCode) return ''
+  return (COUNTRIES.find(c => c.code === nameOrCode) ?? COUNTRIES.find(c => c.name === nameOrCode))?.name ?? nameOrCode
+}
+
 function getDisplayText(value: string, _valueType: 'code' | 'name'): string {
   if (!value) return ''
   // Try exact code match first, then name match (handles legacy data in either format)

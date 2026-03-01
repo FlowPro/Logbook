@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,7 +11,8 @@ import { db } from '../db/database'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
-import { CountrySelect } from '../components/ui/CountrySelect'
+import { CountrySelect, getCountryCode, getCountryName } from '../components/ui/CountrySelect'
+import { getFlagUrl } from '../utils/flagUrl'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
@@ -59,6 +61,7 @@ const DEFAULTS: FormData = {
 
 export function CrewManagement() {
   const { t } = useTranslation()
+  const location = useLocation()
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
@@ -68,6 +71,16 @@ export function CrewManagement() {
   const [showInactive, setShowInactive] = useState(false)
 
   const crew = useLiveQuery(() => db.crew.toArray())
+
+  // Deep-link: open edit modal when navigated with { state: { editMemberId } }
+  const handledRef = useRef(false)
+  useEffect(() => {
+    if (handledRef.current || !crew || crew.length === 0) return
+    const editMemberId = (location.state as { editMemberId?: number } | null)?.editMemberId
+    if (!editMemberId) return
+    const member = crew.find(m => m.id === editMemberId)
+    if (member) { openEdit(member); handledRef.current = true }
+  }, [crew, location.state])
 
   const ROLE_ORDER: Record<string, number> = { skipper: 0, crew: 1, passenger: 2 }
 
@@ -177,19 +190,35 @@ export function CrewManagement() {
           {visibleCrew.map(member => (
             <Card key={member.id} padding={false} className={`flex flex-col${!member.isActive ? ' opacity-60' : ''}`}>
               <div className="p-4 flex-1 flex flex-col">
-                <div className="flex items-start justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <h3 className="font-semibold text-lg">{member.firstName} {member.lastName}</h3>
-                    <p className="text-sm text-gray-500">{member.nationality}</p>
+                    {member.nationality && (() => {
+                      const code = getCountryCode(member.nationality)
+                      return (
+                        <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
+                          {code && <img src={getFlagUrl(code)} alt={code} className="w-4 h-3 object-cover rounded-sm flex-shrink-0" />}
+                          {getCountryName(member.nationality)}
+                        </p>
+                      )
+                    })()}
                   </div>
-                  <div className="flex flex-col gap-1 items-end">
-                    <Badge variant={member.role === 'skipper' ? 'info' : 'default'}>
-                      {t(`crew.roles.${member.role}`)}
-                    </Badge>
-                    <Badge variant={member.isActive ? 'success' : 'default'}>
-                      {member.isActive ? t('crew.active') : t('crew.inactive')}
-                    </Badge>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <button onClick={() => openEdit(member)} title={t('common.edit')} className="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setDeleteConfirmId(member.id!)} title={t('common.delete')} className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
+                </div>
+                <div className="flex gap-1 mt-1">
+                  <Badge variant={member.role === 'skipper' ? 'info' : 'default'}>
+                    {t(`crew.roles.${member.role}`)}
+                  </Badge>
+                  <Badge variant={member.isActive ? 'success' : 'default'}>
+                    {member.isActive ? t('crew.active') : t('crew.inactive')}
+                  </Badge>
                 </div>
                 {member.passportCopy && (
                   member.passportCopy.startsWith('data:application/pdf')
@@ -214,14 +243,6 @@ export function CrewManagement() {
                     ))}
                   </div>
                 )}
-              </div>
-              <div className="flex border-t border-gray-100 dark:border-gray-700">
-                <button onClick={() => openEdit(member)} className="flex-1 p-2 text-sm text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 flex items-center justify-center gap-1.5">
-                  <Edit className="w-3.5 h-3.5" /> {t('common.edit')}
-                </button>
-                <button onClick={() => setDeleteConfirmId(member.id!)} className="flex-1 p-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950 flex items-center justify-center gap-1.5 border-l border-gray-100 dark:border-gray-700">
-                  <Trash2 className="w-3.5 h-3.5" /> {t('common.delete')}
-                </button>
               </div>
             </Card>
           ))}

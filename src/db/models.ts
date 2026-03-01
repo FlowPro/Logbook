@@ -14,13 +14,8 @@ export interface DocumentAttachment {
 // ── Ship / Vessel ─────────────────────────────────────────
 /** Vessel types with their IRPCS/radio prefix (SV = sailing, MV = motor) */
 export const VESSEL_TYPES: { value: string; prefix: 'SV' | 'MV' }[] = [
-  { value: 'Segelyacht',     prefix: 'SV' },
-  { value: 'Katamaran',      prefix: 'SV' },
-  { value: 'Trimaran',       prefix: 'SV' },
-  { value: 'Motorsailer',    prefix: 'SV' },
-  { value: 'Motoryacht',     prefix: 'MV' },
-  { value: 'Motorkatamaran', prefix: 'MV' },
-  { value: 'Motorboot',      prefix: 'MV' },
+  { value: 'Segelyacht', prefix: 'SV' },
+  { value: 'Motoryacht', prefix: 'MV' },
 ]
 
 export function getVesselPrefix(type?: string): 'SV' | 'MV' {

@@ -7,6 +7,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.0] - 2026-03-01
+
+### Added
+- **LogEntryForm als Modal**: Logeinträge erstellen und bearbeiten öffnet jetzt ein Modal — kein eigener Seitenroute mehr (`/log/new`, `/log/:id/edit` entfernt), konsistent mit allen anderen Formularen (Wartung, Crew, Lagerplan)
+- **EmojiSelect**: Neuer UI-Component für Kategorie-Dropdowns — zeigt Emoji-Icon inline im Trigger und in der Liste; verwendet in Wartung (⚙️ 🦺 ⛵ …) und Lagerplan (🔩 🔧 🍎 💊 …)
+- **Lagerplan Bereich-Dropdown**: Farbpunkt des jeweiligen Bereichs wird inline im Dropdown angezeigt
+- **Dashboard Deeplinks**: Kacheln „Logeinträge" und „Crew an Bord" sind klickbar; Lager-Alert-Items öffnen direkt das Edit-Modal des Artikels; Crew-Items öffnen direkt das Edit-Modal des Crew-Mitglieds
+- **Crew-Karte**: Länderflagge und vollständiger Ländername bei der Nationalität (legacy Code-Werte werden automatisch aufgelöst)
+
+### Changed
+- **Crew-Karten**: Bearbeiten/Löschen-Buttons durch kompakte Icon-Buttons (oben rechts) ersetzt — konsistent mit Lagerplan und Wartung
+- **Schiffstypen**: Liste reduziert auf „Segelyacht" (SV) und „Motoryacht" (MV)
+
+---
+
 ## [1.7.1] - 2026-03-01
 
 ### Fixed

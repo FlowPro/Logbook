@@ -26,6 +26,7 @@ import type { StorageItem, StorageArea, StorageSection, StorageCategory } from '
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
+import { EmojiSelect } from '../components/ui/EmojiSelect'
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,21 @@ const CATEGORIES: StorageCategory[] = [
 ]
 
 const UNITS = ['Stk', 'kg', 'g', 'l', 'ml', 'm', 'Paar', 'Dose', 'Flasche', 'Packung', 'Rolle', 'Tube', 'Box', 'Set']
+
+const CAT_EMOJI: Record<string, string> = {
+  spare_parts:  '🔩',
+  tools:        '🔧',
+  rigging:      '⛵',
+  safety:       '🦺',
+  food:         '🍎',
+  beverages:    '🥤',
+  medicine:     '💊',
+  navigation:   '🧭',
+  electronics:  '📡',
+  clothing:     '👕',
+  documents:    '📄',
+  other:        '📦',
+}
 
 const COLOR_OPTIONS = ['slate', 'blue', 'amber', 'green', 'red', 'purple', 'pink', 'teal', 'indigo', 'orange']
 
@@ -250,6 +266,18 @@ function ItemModal({
     prevAreaRef.current = watchedAreaId
   }, [watchedAreaId, setValue])
 
+  // Area dropdown open state + click-outside
+  const [areaDropOpen, setAreaDropOpen] = useState(false)
+  const areaDropRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!areaDropOpen) return
+    function handleClick(e: MouseEvent) {
+      if (areaDropRef.current && !areaDropRef.current.contains(e.target as Node)) setAreaDropOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [areaDropOpen])
+
   async function onSubmit(data: ItemFormData) {
     const now = new Date().toISOString()
     const payload: Omit<StorageItem, 'id'> = {
@@ -290,13 +318,37 @@ function ItemModal({
 
         {/* Bereich + Fach side by side */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
+          <div ref={areaDropRef}>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('storage.area')} *</label>
             <div className="relative">
-              <select {...register('areaId', { valueAsNumber: true })} className="input appearance-none pr-9">
-                {areas.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setAreaDropOpen(v => !v)}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-left flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              >
+                {(() => { const a = areas.find(a => a.id === watchedAreaId); return a ? <><span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDotClass(a.color)}`} /><span className="flex-1 truncate text-sm">{a.name}</span></> : <span className="flex-1 text-sm text-gray-400">—</span> })()}
+                <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${areaDropOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {areaDropOpen && (
+                <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+                  {areas.map(a => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); setValue('areaId', a.id!, { shouldValidate: true }); setAreaDropOpen(false) }}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2.5 transition-colors ${
+                        a.id === watchedAreaId
+                          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100'
+                      }`}
+                    >
+                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${colorDotClass(a.color)}`} />
+                      <span className="flex-1">{a.name}</span>
+                      {a.id === watchedAreaId && <Check className="w-4 h-4 ml-auto text-blue-600 dark:text-blue-400 flex-shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div>
@@ -314,15 +366,13 @@ function ItemModal({
         </div>
 
         {/* Kategorie */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('storage.category')} *</label>
-          <div className="relative">
-            <select {...register('category')} className="input appearance-none pr-9">
-              {CATEGORIES.map(c => <option key={c} value={c}>{t(`storage.categories.${c}`)}</option>)}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-          </div>
-        </div>
+        <EmojiSelect
+          label={`${t('storage.category')} *`}
+          options={CATEGORIES.map(c => ({ value: c, label: t(`storage.categories.${c}`), emoji: CAT_EMOJI[c] ?? '📦' }))}
+          value={watch('category')}
+          onChange={v => setValue('category', v as StorageCategory, { shouldValidate: true })}
+          error={errors.category?.message}
+        />
 
         {/* Menge + Einheit */}
         <div className="grid grid-cols-2 gap-3">

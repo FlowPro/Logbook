@@ -20,6 +20,7 @@ import { Input } from '../components/ui/Input'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
+import { LogEntryForm } from './LogEntryForm'
 import { CountrySelect } from '../components/ui/CountrySelect'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { SailDiagram } from '../components/ui/SailDiagram'
@@ -551,6 +552,7 @@ export function PortLog() {
   const [showLocked, setShowLocked] = useState(false)
   const [lockingYear, setLockingYear] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'passage' | 'entry'; id: number; label: string } | null>(null)
+  const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number }>({ open: false })
 
   const passages = useLiveQuery(() =>
     db.passages.orderBy('departureDate').reverse().toArray()
@@ -794,8 +796,8 @@ export function PortLog() {
                 passage={p}
                 onEdit={() => openEdit(p)}
                 onDelete={() => deletePassage(p.id!)}
-                onAddEntry={() => navigate(`/log/new?passageId=${p.id}`)}
-                onEditEntry={(entryId) => navigate(`/log/${entryId}/edit`)}
+                onAddEntry={() => setLogModal({ open: true, passageId: p.id! })}
+                onEditEntry={(entryId) => setLogModal({ open: true, passageId: p.id!, entryId })}
                 onDeleteEntry={deleteEntry}
                 onExportPDF={async (entries) => {
                   await generatePassagePDF(p, entries, ship)
@@ -953,6 +955,22 @@ export function PortLog() {
             }
           </p>
         </div>
+      </Modal>
+
+      {/* Log entry form modal */}
+      <Modal
+        isOpen={logModal.open}
+        onClose={() => setLogModal({ open: false })}
+        title={logModal.entryId ? t('logEntry.editEntry') : t('logEntry.newEntry')}
+        size="xl"
+      >
+        {logModal.open && logModal.passageId && (
+          <LogEntryForm
+            passageId={logModal.passageId}
+            entryId={logModal.entryId}
+            onClose={() => setLogModal({ open: false })}
+          />
+        )}
       </Modal>
     </div>
   )

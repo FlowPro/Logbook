@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { format } from 'date-fns'
 import {
   MapPin, Navigation, Wind, Gauge, Users, FileText,
-  ChevronDown, ChevronUp, Copy, Loader2, Save, ArrowLeft, Anchor,
+  ChevronDown, ChevronUp, Copy, Loader2, Save, Anchor,
   Ship, Building2, CircleDot, GitCommitHorizontal, X,
 } from 'lucide-react'
 import { db } from '../db/database'
@@ -251,41 +250,42 @@ const MOORING_OPTIONS: Array<{ value: MooringStatus; icon: React.ElementType; co
   { value: 'moored_alongside',icon: GitCommitHorizontal,  colorActive: 'bg-teal-600 text-white' },
 ]
 
-export function LogEntryForm() {
+interface LogEntryFormProps {
+  passageId: number
+  entryId?: number
+  onClose: () => void
+}
+
+export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps) {
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const { id } = useParams<{ id?: string }>()
-  const [searchParams] = useSearchParams()
-  const isEdit = !!id
+  const isEdit = !!entryId
 
   const [attachments, setAttachments] = useState<DocumentAttachment[]>([])
   const [gpsLoading, setGpsLoading] = useState(false)
   const [gpsError, setGpsError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [resolvedPassageId, setResolvedPassageId] = useState<number | null>(null)
 
   const { settings } = useSettings()
   const { ship } = useShip()
   const { connected: nmeaConnected, data: nmeaData } = useNMEAContext()
 
   const existingEntry = useLiveQuery(
-    () => id ? db.logEntries.get(parseInt(id)) : undefined,
-    [id]
+    () => entryId ? db.logEntries.get(entryId) : undefined,
+    [entryId]
   )
   const passage = useLiveQuery(
-    () => resolvedPassageId ? db.passages.get(resolvedPassageId) : undefined,
-    [resolvedPassageId]
+    () => db.passages.get(passageId),
+    [passageId]
   )
   const lastEntryForPassage = useLiveQuery(
     async () => {
-      if (!resolvedPassageId) return null
-      const entries = await db.logEntries.where('passageId').equals(resolvedPassageId).toArray()
+      const entries = await db.logEntries.where('passageId').equals(passageId).toArray()
       entries.sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
       // In edit mode, exclude the current entry so we compare against the previous one
-      const filtered = isEdit && id ? entries.filter(e => e.id !== parseInt(id)) : entries
+      const filtered = isEdit && entryId ? entries.filter(e => e.id !== entryId) : entries
       return filtered[filtered.length - 1] ?? null
     },
-    [resolvedPassageId, isEdit, id]
+    [passageId, isEdit, entryId]
   )
   const activeCrew = useLiveQuery(() => db.crew.filter(c => c.isActive).toArray())
 
@@ -300,27 +300,10 @@ export function LogEntryForm() {
     )
   }
 
-  // Determine passageId from URL param (new) or existing entry (edit)
-  useEffect(() => {
-    if (isEdit) {
-      // Wait for Dexie to load the entry before resolving passageId
-      if (existingEntry) {
-        setResolvedPassageId(existingEntry.passageId)
-      }
-      // existingEntry === undefined means still loading → do nothing yet
-    } else {
-      const param = searchParams.get('passageId')
-      if (param) {
-        setResolvedPassageId(parseInt(param))
-      } else {
-        navigate('/ports', { replace: true })
-      }
-    }
-  }, [isEdit, existingEntry, searchParams, navigate])
 
   const { control, register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: makeDefaults(resolvedPassageId ?? 0),
+    defaultValues: makeDefaults(passageId),
   })
 
   const engineOn = watch('engineOn')
@@ -341,11 +324,6 @@ export function LogEntryForm() {
   useEffect(() => {
     setValue('seaStateBeaufort', metersToSeaState(swellHeightM ?? 0))
   }, [swellHeightM, setValue])
-
-  // Sync passageId into form whenever resolved
-  useEffect(() => {
-    if (resolvedPassageId) setValue('passageId', resolvedPassageId)
-  }, [resolvedPassageId, setValue])
 
   // Populate form from existing entry (edit mode)
   useEffect(() => {
@@ -375,7 +353,7 @@ export function LogEntryForm() {
     const src = lastEntryForPassage
     if (!src) return
     reset({
-      passageId: resolvedPassageId!,
+      passageId,
       date: watch('date'),
       time: watch('time'),
       latitude: src.latitude,
@@ -498,12 +476,12 @@ export function LogEntryForm() {
         updatedAt: now,
       }
 
-      if (isEdit && id) {
-        await db.logEntries.update(parseInt(id), { ...entryData, updatedAt: now })
+      if (isEdit && entryId) {
+        await db.logEntries.update(entryId, { ...entryData, updatedAt: now })
       } else {
         await db.logEntries.add(entryData)
       }
-      navigate('/ports')
+      onClose()
     } catch (err) {
       console.error(err)
     } finally {
@@ -519,22 +497,8 @@ export function LogEntryForm() {
     { value: 'fog', label: t('logEntry.visibilities.fog') },
   ]
 
-  if (!resolvedPassageId) return null
-
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => navigate('/ports')} className="btn-ghost flex items-center gap-2">
-          <ArrowLeft className="w-4 h-4" />
-          {t('common.back')}
-        </button>
-        <h1 className="text-xl font-bold">{isEdit ? t('logEntry.editEntry') : t('logEntry.newEntry')}</h1>
-        <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-          {t('common.save')}
-        </Button>
-      </div>
-
+    <div className="space-y-4">
       {/* Passage banner */}
       {passage && (
         <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
@@ -948,7 +912,7 @@ export function LogEntryForm() {
         </Section>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={() => navigate('/ports')}>{t('common.cancel')}</Button>
+          <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
           <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>{t('common.save')}</Button>
         </div>
       </form>

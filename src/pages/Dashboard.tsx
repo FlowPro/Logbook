@@ -225,24 +225,30 @@ export function Dashboard() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          icon={<BookOpen className="w-5 h-5" />}
-          label={t('dashboard.totalEntries')}
-          value={String(totalEntries ?? 0)}
-          color="blue"
-        />
+        <Link to="/logbook" className="block">
+          <StatCard
+            icon={<BookOpen className="w-5 h-5" />}
+            label={t('dashboard.totalEntries')}
+            value={String(totalEntries ?? 0)}
+            color="blue"
+            clickable
+          />
+        </Link>
         <StatCard
           icon={<Navigation className="w-5 h-5" />}
           label={t('dashboard.totalDistance')}
           value={`${fmtNum(totalDistance ?? 0)} nm`}
           color="green"
         />
-        <StatCard
-          icon={<Users className="w-5 h-5" />}
-          label={t('dashboard.crewOnBoard')}
-          value={String(activeCrew?.length ?? 0)}
-          color="purple"
-        />
+        <Link to="/crew" className="block">
+          <StatCard
+            icon={<Users className="w-5 h-5" />}
+            label={t('dashboard.crewOnBoard')}
+            value={String(activeCrew?.length ?? 0)}
+            color="purple"
+            clickable
+          />
+        </Link>
         <Link to="/settings#ship" className="block">
           <div className="card p-4 hover:shadow-md transition-shadow">
             <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
@@ -389,7 +395,7 @@ export function Dashboard() {
                   return (
                     <li
                       key={item.id}
-                      onClick={() => navigate('/storage')}
+                      onClick={() => navigate('/storage', { state: { editItemId: item.id } })}
                       className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
                     >
                       {lowStock
@@ -436,7 +442,7 @@ export function Dashboard() {
             {activeCrew && activeCrew.length > 0 ? (
               <ul className="space-y-2">
                 {activeCrew.map(m => (
-                  <li key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700">
+                  <li key={m.id} onClick={() => navigate('/crew', { state: { editMemberId: m.id } })} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors">
                     <div>
                       <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
                       <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
@@ -869,6 +875,7 @@ interface StatCardProps {
   value: string
   color: 'blue' | 'green' | 'purple' | 'orange'
   small?: boolean
+  clickable?: boolean
 }
 
 interface TankRowProps {
@@ -915,7 +922,7 @@ function TankRow({ icon, label, pct, capacity }: TankRowProps) {
   )
 }
 
-function StatCard({ icon, label, value, color, small }: StatCardProps) {
+function StatCard({ icon, label, value, color, small, clickable }: StatCardProps) {
   const colorClasses = {
     blue: 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400',
     green: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400',
@@ -924,7 +931,7 @@ function StatCard({ icon, label, value, color, small }: StatCardProps) {
   }[color]
 
   return (
-    <div className="card p-4">
+    <div className={`card p-4 ${clickable ? 'hover:shadow-md transition-shadow cursor-pointer' : ''}`}>
       <div className={`inline-flex p-2 rounded-lg mb-3 ${colorClasses}`}>
         {icon}
       </div>

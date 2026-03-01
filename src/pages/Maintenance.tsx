@@ -20,6 +20,7 @@ import { useSettings } from '../hooks/useSettings'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Select } from '../components/ui/Select'
+import { EmojiSelect } from '../components/ui/EmojiSelect'
 import { Modal } from '../components/ui/Modal'
 import type { MaintenanceEntry, MaintenanceStatus, MaintenancePriority, MaintenanceChecklistItem, MaintenanceRecurrenceType } from '../db/models'
 
@@ -399,7 +400,7 @@ export function Maintenance() {
     return { planned, inProgress, done, archive }
   }, [allEntries, filterCat, filterYear, archiveCutoff])
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: makeDefaults(settings?.defaultCurrency),
   })
@@ -816,7 +817,12 @@ export function Maintenance() {
 
           {/* Category + Priority */}
           <div className="grid grid-cols-2 gap-4">
-            <Select label={t('maintenance.category')} options={categoryOptions} {...register('category')} />
+            <EmojiSelect
+              label={t('maintenance.category')}
+              options={categoryOptions.map(o => ({ ...o, emoji: CAT_EMOJI[o.value] ?? '🔧' }))}
+              value={watch('category')}
+              onChange={v => setValue('category', v as FormData['category'], { shouldValidate: true })}
+            />
             <Select label={t('maintenance.priorityLabel')} options={priorityOptions} {...register('priority')} />
           </div>
 

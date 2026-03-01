@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 const Router = import.meta.env.VITE_GH_PAGES ? HashRouter : BrowserRouter
 import { AppLayout } from './components/layout/AppLayout'
 import { Dashboard } from './pages/Dashboard'
-import { LogEntryForm } from './pages/LogEntryForm'
 import { CrewManagement } from './pages/CrewManagement'
 import { Summary } from './pages/Summary'
 import { PortLog } from './pages/PortLog'
@@ -42,9 +41,6 @@ function App() {
         <Route path="/" element={<AppLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="logbook" element={<Navigate to="/ports" replace />} />
-          <Route path="log/new" element={<LogEntryForm />} />
-          <Route path="log/:id" element={<LogEntryForm />} />
-          <Route path="log/:id/edit" element={<LogEntryForm />} />
           <Route path="crew" element={<CrewManagement />} />
           <Route path="summary" element={<Summary />} />
           <Route path="ports" element={<PortLog />} />
