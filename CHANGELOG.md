@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.1] - 2026-03-01
+
+### Fixed
+- **Passagen**: Gesperrte Passagen sind jetzt ebenfalls im Lesemodus zugänglich — Auge-Icon im Passagen-Header öffnet das Formular schreibgeschützt (amber Banner, alle Felder nicht bearbeitbar, nur «Schliessen»-Button, Datum/Uhrzeit-Hinweis ausgeblendet)
+
+---
+
 ## [1.9.0] - 2026-03-01
 
 ### Added

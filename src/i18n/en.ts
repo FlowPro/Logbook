@@ -450,6 +450,7 @@ const en = {
       passageDeleted: 'Passage deleted',
       passageUnlocked: 'Passage unlocked',
       entryDeleted: 'Log entry deleted',
+      viewPassage: 'View Passage',
       unlockTitle: 'Unlock Passage',
       unlockConfirmText: 'Re-open passage «{{departure}} → {{arrival}}» and make it editable?',
       unlockConfirm: 'Unlock',

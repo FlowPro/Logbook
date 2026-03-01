@@ -447,6 +447,7 @@ const de = {
       passageDeleted: 'Passage gelöscht',
       passageUnlocked: 'Passage entsperrt',
       entryDeleted: 'Logeintrag gelöscht',
+      viewPassage: 'Passage ansehen',
       unlockTitle: 'Passage entsperren',
       unlockConfirmText: 'Passage «{{departure}} → {{arrival}}» wieder eröffnen und editierbar machen?',
       unlockConfirm: 'Entsperren',

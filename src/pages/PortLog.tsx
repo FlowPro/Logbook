@@ -205,6 +205,7 @@ function PortAutocomplete({
 interface PassageCardProps {
   passage: PassageEntry
   onEdit: () => void
+  onView: () => void
   onDelete: () => void
   onAddEntry: () => void
   onEditEntry: (id: number) => void
@@ -217,7 +218,7 @@ interface PassageCardProps {
   defaultOpen?: boolean
 }
 
-function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onViewEntry, onDeleteEntry, onExportPDF, onToggleLock, onShowMap, highlight, defaultOpen }: PassageCardProps) {
+function PassageCard({ passage, onEdit, onView, onDelete, onAddEntry, onEditEntry, onViewEntry, onDeleteEntry, onExportPDF, onToggleLock, onShowMap, highlight, defaultOpen }: PassageCardProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(!!defaultOpen || !!highlight)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -354,22 +355,32 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onVie
             >
               {passage.locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
             </button>
-            <button
-              onClick={onEdit}
-              disabled={!!passage.locked}
-              className={`p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors ${passage.locked ? 'opacity-40 cursor-not-allowed' : ''}`}
-              title={passage.locked ? 'Passage gesperrt' : t('common.edit')}
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onDelete}
-              disabled={!!passage.locked}
-              className={`p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors ${passage.locked ? 'opacity-40 cursor-not-allowed' : ''}`}
-              title={passage.locked ? 'Passage gesperrt' : t('common.delete')}
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {passage.locked ? (
+              <button
+                onClick={onView}
+                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors"
+                title={t('portLog.viewPassage')}
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={onEdit}
+                  className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors"
+                  title={t('common.edit')}
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={onDelete}
+                  className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors"
+                  title={t('common.delete')}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -562,6 +573,7 @@ export function PortLog() {
   const highlightId = searchParams.get('passage') ? parseInt(searchParams.get('passage')!) : null
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
+  const [passageReadOnly, setPassageReadOnly] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
   const [filterYear, setFilterYear] = useState<string>('all')
@@ -629,6 +641,24 @@ export function PortLog() {
   function openAdd() {
     reset(DEFAULTS)
     setEditingId(null)
+    setPassageReadOnly(false)
+    setModalOpen(true)
+  }
+
+  function openView(p: PassageEntry) {
+    reset({
+      departurePort: p.departurePort,
+      departureCountry: p.departureCountry,
+      arrivalPort: p.arrivalPort,
+      arrivalCountry: p.arrivalCountry,
+      customsClearedOut: p.customsClearedOut ?? p.customsCleared ?? false,
+      customsNotesOut: p.customsNotesOut ?? p.customsNotes ?? '',
+      customsClearedIn: p.customsClearedIn ?? false,
+      customsNotesIn: p.customsNotesIn ?? '',
+      notes: p.notes,
+    })
+    setEditingId(p.id!)
+    setPassageReadOnly(true)
     setModalOpen(true)
   }
 
@@ -645,6 +675,7 @@ export function PortLog() {
       notes: p.notes,
     })
     setEditingId(p.id!)
+    setPassageReadOnly(false)
     setModalOpen(true)
   }
 
@@ -818,6 +849,7 @@ export function PortLog() {
                 key={p.id}
                 passage={p}
                 onEdit={() => openEdit(p)}
+                onView={() => openView(p)}
                 onDelete={() => deletePassage(p.id!)}
                 onAddEntry={() => setLogModal({ open: true, passageId: p.id! })}
                 onEditEntry={(entryId) => setLogModal({ open: true, passageId: p.id!, entryId })}
@@ -855,23 +887,39 @@ export function PortLog() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingId ? 'Passage bearbeiten' : 'Neue Passage'}
+        title={passageReadOnly ? t('portLog.viewPassage') : editingId ? 'Passage bearbeiten' : 'Neue Passage'}
         size="lg"
         footer={
-          <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
-            <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-              {saved ? t('common.saved') : t('common.save')}
-            </Button>
-          </>
+          passageReadOnly ? (
+            <Button onClick={() => setModalOpen(false)}>{t('common.close')}</Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => setModalOpen(false)}>{t('common.cancel')}</Button>
+              <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
+                {saved ? t('common.saved') : t('common.save')}
+              </Button>
+            </>
+          )
         }
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {/* Read-only banner */}
+          {passageReadOnly && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+              <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+              <p className="text-sm text-amber-700 dark:text-amber-300">{t('logEntry.readOnlyNote')}</p>
+            </div>
+          )}
+
+          {/* Form fields – non-interactive when read-only */}
+          <div className={passageReadOnly ? 'pointer-events-none' : ''}>
           {/* Date/time info – auto-derived from entries */}
+          {!passageReadOnly && (
           <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl text-sm text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900">
             <p className="font-medium mb-0.5">Datum & Uhrzeit</p>
             <p className="text-xs text-blue-600 dark:text-blue-400">Werden automatisch aus dem ersten und letzten Logeintrag der Passage übernommen.</p>
           </div>
+          )}
 
           <div>
             <h4 className="font-semibold text-sm mb-3">{t('portLog.departure')}</h4>
@@ -954,6 +1002,7 @@ export function PortLog() {
             <label className="label">{t('common.notes')}</label>
             <textarea {...register('notes')} rows={3} className="input resize-none" />
           </div>
+          </div>{/* end pointer-events-none wrapper */}
         </form>
       </Modal>
 
