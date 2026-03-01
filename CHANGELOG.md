@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.3] - 2026-03-01
+
+### Fixed
+- **Karte**: Lazy-Loading und Splash-Screen rückgängig gemacht — Karte wird wieder korrekt angezeigt
+- **Windows**: Weißer Startbildschirm reduziert durch native WebView2-Hintergrundfarbe (`backgroundColor` in tauri.conf.json) und inline CSS in index.html (greift vor JS-Ausführung)
+
+---
+
 ## [1.8.2] - 2026-03-01
 
 ### Changed

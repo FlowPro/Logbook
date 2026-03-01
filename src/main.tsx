@@ -26,11 +26,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
-
-// Fade out the HTML splash screen once React has rendered
-requestAnimationFrame(() => {
-  const splash = document.getElementById('splash')
-  if (!splash) return
-  splash.classList.add('hidden')
-  splash.addEventListener('transitionend', () => splash.remove(), { once: true })
-})
