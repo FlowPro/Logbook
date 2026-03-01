@@ -32,6 +32,8 @@ import { Badge } from '../components/ui/Badge'
 import { formatCoordinate } from '../utils/geo'
 import { Button } from '../components/ui/Button'
 import { fmtNum } from '../utils/units'
+import { getCountryCode, getCountryName } from '../components/ui/CountrySelect'
+import { getFlagUrl } from '../utils/flagUrl'
 import { useSettings } from '../hooks/useSettings'
 
 function trendIcon(trend?: string): string {
@@ -254,8 +256,9 @@ export function Dashboard() {
             <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
               <Anchor className="w-5 h-5" />
             </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
               {ship?.name ?? '—'}
+              {ship?.flag && <img src={getFlagUrl(ship.flag)} alt={ship.flag} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />}
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               {ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
@@ -445,7 +448,10 @@ export function Dashboard() {
                   <li key={m.id} onClick={() => navigate('/crew', { state: { editMemberId: m.id } })} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors">
                     <div>
                       <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
-                      <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
+                      {m.nationality && (() => {
+                        const code = getCountryCode(m.nationality)
+                        return code ? <img src={getFlagUrl(code)} alt={code} className="w-4 h-3 object-cover rounded-sm flex-shrink-0 ml-2 inline-block align-middle" /> : null
+                      })()}
                     </div>
                     <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
                       {t(`crew.roles.${m.role}`)}

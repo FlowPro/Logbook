@@ -7,6 +7,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.2] - 2026-03-01
+
+### Changed
+- **Dashboard**: Crew-Kachel zeigt Länderflagge statt Nationalitätskürzel; Schiff-Kachel zeigt Flagge nach dem Schiffsnamen
+
+---
+
 ## [1.8.1] - 2026-03-01
 
 ### Added
