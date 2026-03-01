@@ -7,6 +7,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.0] - 2026-03-01
+
+### Added
+- **Passagen**: Gesperrte Logeinträge sind jetzt im Lesemodus zugänglich — Auge-Icon öffnet den Eintrag schreibgeschützt (amber Banner, alle Felder nicht bearbeitbar, nur «Schliessen»-Button)
+- **Passagen**: Bestätigungsdialog beim Entsperren einer Passage («Passage wieder eröffnen und editierbar machen?»); Sperren bleibt ohne Bestätigung
+- **Passagen**: Länderflaggen direkt im Passagentitel (Abfahrtshafen 🏴 → Zielhafen 🏴)
+- **Dashboard**: Aktive Passage im «Letzter Eintrag»-Widget (Passagenname mit Flaggen)
+- **Länderauswahl**: 25 Territorien und Sonderfälle ergänzt (AQ, AW, BM, VG, KY, CW, FK, FO, GF, PF, GI, GL, GP, HK, MO, MQ, NC, PR, RE, PM, SX, SJ, TC, VI, YT)
+
+### Fixed
+- **Layout**: Scrollbar-Verschiebung beim Navigieren zwischen Seiten behoben (`scrollbar-gutter: stable` auf `html`-Element) — kein horizontales Geruckel mehr
+
+---
+
 ## [1.8.4] - 2026-03-01
 
 ### Added

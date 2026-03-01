@@ -144,6 +144,7 @@ const de = {
       recentEntries: 'Letzte Einträge',
       crewOnBoard: 'Crew an Bord',
       totalPassages: 'Passagen',
+      activePassage: 'Aktive Passage',
       engineHours: 'Motorstunden',
       weatherSummary: 'Wetterzusammenfassung',
       position: 'Aktuelle Position',
@@ -267,6 +268,8 @@ const de = {
       title: 'Logbucheintrag',
       newEntry: 'Neuer Eintrag',
       editEntry: 'Eintrag bearbeiten',
+      viewEntry: 'Eintrag ansehen',
+      readOnlyNote: 'Passage gesperrt — dieser Eintrag ist schreibgeschützt.',
       copyFromLast: 'Aus letztem Eintrag kopieren',
       gpsAutoFill: 'GPS-Position übernehmen',
       gpsNotAvailable: 'GPS nicht verfügbar',
@@ -444,6 +447,9 @@ const de = {
       passageDeleted: 'Passage gelöscht',
       passageUnlocked: 'Passage entsperrt',
       entryDeleted: 'Logeintrag gelöscht',
+      unlockTitle: 'Passage entsperren',
+      unlockConfirmText: 'Passage «{{departure}} → {{arrival}}» wieder eröffnen und editierbar machen?',
+      unlockConfirm: 'Entsperren',
     },
 
     // Maintenance

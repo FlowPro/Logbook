@@ -144,6 +144,7 @@ const en = {
       recentEntries: 'Recent Entries',
       crewOnBoard: 'Crew on Board',
       totalPassages: 'Passages',
+      activePassage: 'Active Passage',
       engineHours: 'Engine Hours',
       weatherSummary: 'Weather Summary',
       position: 'Current Position',
@@ -267,6 +268,8 @@ const en = {
       title: 'Log Entry',
       newEntry: 'New Log Entry',
       editEntry: 'Edit Log Entry',
+      viewEntry: 'View Log Entry',
+      readOnlyNote: 'Passage locked — this entry is read-only.',
       copyFromLast: 'Copy from last entry',
       gpsAutoFill: 'Get GPS position',
       gpsNotAvailable: 'GPS not available',
@@ -447,6 +450,9 @@ const en = {
       passageDeleted: 'Passage deleted',
       passageUnlocked: 'Passage unlocked',
       entryDeleted: 'Log entry deleted',
+      unlockTitle: 'Unlock Passage',
+      unlockConfirmText: 'Re-open passage «{{departure}} → {{arrival}}» and make it editable?',
+      unlockConfirm: 'Unlock',
     },
 
     // Maintenance

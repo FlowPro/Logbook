@@ -95,6 +95,10 @@ export function Dashboard() {
   const lastEntry = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().first()
   )
+  const lastEntryPassage = useLiveQuery(
+    () => lastEntry?.passageId ? db.passages.get(lastEntry.passageId) : undefined,
+    [lastEntry?.passageId]
+  )
   const lastEntryWithFuel = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse()
       .filter(e => e.fuelLevelL != null)
@@ -500,6 +504,18 @@ export function Dashboard() {
                 }
               />
               <div className="space-y-3">
+                {lastEntryPassage && (
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                    <span className="text-sm text-gray-500">{t('dashboard.activePassage')}</span>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <span>{lastEntryPassage.departurePort}</span>
+                      {(() => { const c = getCountryCode(lastEntryPassage.departureCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
+                      <span className="text-gray-400 font-normal">→</span>
+                      <span>{lastEntryPassage.arrivalPort || '…'}</span>
+                      {lastEntryPassage.arrivalCountry && (() => { const c = getCountryCode(lastEntryPassage.arrivalCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">{t('logEntry.date')}</span>
                   <span className="font-mono text-sm font-medium">

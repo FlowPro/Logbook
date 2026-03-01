@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 import {
   MapPin, Navigation, Wind, Gauge, Users, FileText,
   ChevronDown, ChevronUp, Copy, Loader2, Save, Anchor,
-  Ship, Building2, CircleDot, GitCommitHorizontal, X,
+  Ship, Building2, CircleDot, GitCommitHorizontal, X, Lock,
 } from 'lucide-react'
 import { db } from '../db/database'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -122,9 +122,10 @@ interface SectionProps {
   icon: React.ReactNode
   defaultOpen?: boolean
   children: React.ReactNode
+  disabled?: boolean
 }
 
-function Section({ title, icon, defaultOpen = true, children }: SectionProps) {
+function Section({ title, icon, defaultOpen = true, children, disabled }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen)
   return (
     <div className="card overflow-hidden">
@@ -143,7 +144,7 @@ function Section({ title, icon, defaultOpen = true, children }: SectionProps) {
       </button>
       {open && (
         <div className="px-4 pb-4 pt-0 border-t border-gray-100 dark:border-gray-700">
-          <div className="pt-4 space-y-4">
+          <div className={`pt-4 space-y-4 ${disabled ? 'pointer-events-none' : ''}`}>
             {children}
           </div>
         </div>
@@ -254,9 +255,10 @@ interface LogEntryFormProps {
   passageId: number
   entryId?: number
   onClose: () => void
+  readOnly?: boolean
 }
 
-export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps) {
+export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntryFormProps) {
   const { t } = useTranslation()
   const isEdit = !!entryId
 
@@ -499,6 +501,14 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
 
   return (
     <div className="space-y-4">
+      {/* Read-only banner */}
+      {readOnly && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+          <p className="text-sm text-amber-700 dark:text-amber-300">{t('logEntry.readOnlyNote')}</p>
+        </div>
+      )}
+
       {/* Passage banner */}
       {passage && (
         <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
@@ -514,8 +524,8 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </div>
       )}
 
-      {/* Quick actions */}
-      <div className="space-y-2">
+      {/* Quick actions — hidden in read-only mode */}
+      {!readOnly && <div className="space-y-2">
         <div className="flex gap-2 flex-wrap items-center">
           <Button
             type="button"
@@ -545,11 +555,11 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
           )}
           {gpsError && <span className="text-xs text-red-600 self-center">{gpsError}</span>}
         </div>
-      </div>
+      </div>}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Position & Time */}
-        <Section title={t('logEntry.sections.position')} icon={<MapPin className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.position')} icon={<MapPin className="w-4 h-4" />} disabled={readOnly}>
           <div className="grid grid-cols-2 gap-4">
             <Input label={t('logEntry.date')} type="date" {...register('date')} required />
             <Input label={t('logEntry.time')} type="time" {...register('time')} required />
@@ -581,7 +591,7 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         {/* Navigation */}
-        <Section title={t('logEntry.sections.navigation')} icon={<Navigation className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.navigation')} icon={<Navigation className="w-4 h-4" />} disabled={readOnly}>
           <div className="grid grid-cols-2 gap-4">
             <Input label={nmLabel(t('logEntry.courseTrue'))} type="text" inputMode="numeric" {...register('courseTrue', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
             <Input label={t('logEntry.courseMagnetic')} type="text" inputMode="numeric" {...register('courseMagnetic', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
@@ -596,7 +606,7 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         {/* Wind & Weather */}
-        <Section title={t('logEntry.sections.wind')} icon={<Wind className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.wind')} icon={<Wind className="w-4 h-4" />} disabled={readOnly}>
           <div className="grid grid-cols-2 gap-4">
             <Input label={nmLabel(t('logEntry.windTrueDirection'))} type="text" inputMode="numeric" {...register('windTrueDirection', { setValueAs: (v: string) => { const n = Math.round(parseFloat(String(v).replace(',', '.'))); return isNaN(n) ? undefined : n } })} />
             <Input label={nmLabel(t('logEntry.windTrueSpeed'))} type="text" inputMode="decimal" {...register('windTrueSpeed', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
@@ -657,7 +667,7 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         {/* Motor & Sails */}
-        <Section title={t('logEntry.sections.engine')} icon={<Gauge className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.engine')} icon={<Gauge className="w-4 h-4" />} disabled={readOnly}>
           {/* Sail picker – first */}
           <div>
             <label className="label">{t('logEntry.sailConfig')}</label>
@@ -859,7 +869,7 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         {/* Crew */}
-        <Section title={t('logEntry.sections.crew')} icon={<Users className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.crew')} icon={<Users className="w-4 h-4" />} disabled={readOnly}>
           {activeCrew && activeCrew.length > 0 && (
             <div>
               <label className="label">{t('logEntry.crewOnWatch')}</label>
@@ -895,7 +905,7 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         {/* Notes & Attachments */}
-        <Section title={t('logEntry.sections.notes')} icon={<FileText className="w-4 h-4" />}>
+        <Section title={t('logEntry.sections.notes')} icon={<FileText className="w-4 h-4" />} disabled={readOnly}>
           <div>
             <label className="label">{t('common.notes')}</label>
             <textarea {...register('notes')} rows={4} className="input resize-none" placeholder="Besondere Vorkommnisse, Beobachtungen..." />
@@ -912,8 +922,14 @@ export function LogEntryForm({ passageId, entryId, onClose }: LogEntryFormProps)
         </Section>
 
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
-          <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>{t('common.save')}</Button>
+          {readOnly ? (
+            <Button type="button" onClick={onClose}>{t('common.close')}</Button>
+          ) : (
+            <>
+              <Button type="button" variant="secondary" onClick={onClose}>{t('common.cancel')}</Button>
+              <Button type="submit" loading={saving} icon={<Save className="w-4 h-4" />}>{t('common.save')}</Button>
+            </>
+          )}
         </div>
       </form>
     </div>

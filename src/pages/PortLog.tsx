@@ -21,7 +21,8 @@ import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { LogEntryForm } from './LogEntryForm'
-import { CountrySelect } from '../components/ui/CountrySelect'
+import { CountrySelect, getCountryCode } from '../components/ui/CountrySelect'
+import { getFlagUrl } from '../utils/flagUrl'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { SailDiagram } from '../components/ui/SailDiagram'
 import { formatCoordinate } from '../utils/geo'
@@ -207,6 +208,7 @@ interface PassageCardProps {
   onDelete: () => void
   onAddEntry: () => void
   onEditEntry: (id: number) => void
+  onViewEntry: (id: number) => void
   onDeleteEntry: (id: number) => void
   onExportPDF: (entries: LogEntry[]) => void | Promise<void>
   onToggleLock: () => void
@@ -215,7 +217,7 @@ interface PassageCardProps {
   defaultOpen?: boolean
 }
 
-function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDeleteEntry, onExportPDF, onToggleLock, onShowMap, highlight, defaultOpen }: PassageCardProps) {
+function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onViewEntry, onDeleteEntry, onExportPDF, onToggleLock, onShowMap, highlight, defaultOpen }: PassageCardProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(!!defaultOpen || !!highlight)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -284,8 +286,12 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">
-                {passage.departurePort} → {passage.arrivalPort}
+              <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100 flex items-center gap-1.5 flex-wrap">
+                <span>{passage.departurePort}</span>
+                {passage.departureCountry && (() => { const c = getCountryCode(passage.departureCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0 inline-block" /> : null })()}
+                <span className="text-gray-400 font-normal">→</span>
+                <span>{passage.arrivalPort}</span>
+                {passage.arrivalCountry && (() => { const c = getCountryCode(passage.arrivalCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0 inline-block" /> : null })()}
               </h3>
               {passage.locked && (
                 <Badge variant="warning">
@@ -475,20 +481,30 @@ function PassageCard({ passage, onEdit, onDelete, onAddEntry, onEditEntry, onDel
                       </td>
                       <td className="px-3 py-2 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => !passage.locked && onEditEntry(entry.id!)}
-                            disabled={!!passage.locked}
-                            className={`p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded ${passage.locked ? 'opacity-30 cursor-not-allowed' : ''}`}
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => !passage.locked && onDeleteEntry(entry.id!)}
-                            disabled={!!passage.locked}
-                            className={`p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded ${passage.locked ? 'opacity-30 cursor-not-allowed' : ''}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {passage.locked ? (
+                            <button
+                              onClick={() => onViewEntry(entry.id!)}
+                              className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded"
+                              title={t('logEntry.viewEntry')}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => onEditEntry(entry.id!)}
+                                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => onDeleteEntry(entry.id!)}
+                                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 rounded"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -552,7 +568,8 @@ export function PortLog() {
   const [showLocked, setShowLocked] = useState(false)
   const [lockingYear, setLockingYear] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'passage' | 'entry'; id: number; label: string } | null>(null)
-  const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number }>({ open: false })
+  const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number; readOnly?: boolean }>({ open: false })
+  const [unlockConfirm, setUnlockConfirm] = useState<PassageEntry | null>(null)
 
   const passages = useLiveQuery(() =>
     db.passages.orderBy('departureDate').reverse().toArray()
@@ -681,6 +698,12 @@ export function PortLog() {
     }
   }
 
+  async function confirmUnlock() {
+    if (!unlockConfirm) return
+    setUnlockConfirm(null)
+    await toggleLock(unlockConfirm)
+  }
+
   function deletePassage(id: number) {
     const p = passages?.find(x => x.id === id)
     const label = p ? `${p.departurePort} → ${p.arrivalPort}` : '—'
@@ -798,6 +821,7 @@ export function PortLog() {
                 onDelete={() => deletePassage(p.id!)}
                 onAddEntry={() => setLogModal({ open: true, passageId: p.id! })}
                 onEditEntry={(entryId) => setLogModal({ open: true, passageId: p.id!, entryId })}
+                onViewEntry={(entryId) => setLogModal({ open: true, passageId: p.id!, entryId, readOnly: true })}
                 onDeleteEntry={deleteEntry}
                 onExportPDF={async (entries) => {
                   await generatePassagePDF(p, entries, ship)
@@ -806,7 +830,7 @@ export function PortLog() {
                     toast.success(t('portLog.passageLocked'), { description: `${p.departurePort} → ${p.arrivalPort}` })
                   }
                 }}
-                onToggleLock={() => toggleLock(p)}
+                onToggleLock={() => p.locked ? setUnlockConfirm(p) : toggleLock(p)}
                 onShowMap={() => navigate('/map', { state: { passageId: p.id } })}
                 highlight={highlightId === p.id}
                 defaultOpen={defaultOpenId === p.id}
@@ -961,16 +985,41 @@ export function PortLog() {
       <Modal
         isOpen={logModal.open}
         onClose={() => setLogModal({ open: false })}
-        title={logModal.entryId ? t('logEntry.editEntry') : t('logEntry.newEntry')}
+        title={logModal.readOnly ? t('logEntry.viewEntry') : logModal.entryId ? t('logEntry.editEntry') : t('logEntry.newEntry')}
         size="xl"
       >
         {logModal.open && logModal.passageId && (
           <LogEntryForm
             passageId={logModal.passageId}
             entryId={logModal.entryId}
+            readOnly={logModal.readOnly}
             onClose={() => setLogModal({ open: false })}
           />
         )}
+      </Modal>
+
+      {/* Unlock confirmation modal */}
+      <Modal
+        isOpen={unlockConfirm !== null}
+        onClose={() => setUnlockConfirm(null)}
+        title={t('portLog.unlockTitle')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setUnlockConfirm(null)}>{t('common.cancel')}</Button>
+            <Button size="sm" icon={<Unlock className="w-4 h-4" />} onClick={confirmUnlock}>{t('portLog.unlockConfirm')}</Button>
+          </>
+        }
+      >
+        <div className="flex items-start gap-3">
+          <Unlock className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {unlockConfirm && t('portLog.unlockConfirmText', {
+              departure: unlockConfirm.departurePort,
+              arrival: unlockConfirm.arrivalPort,
+            })}
+          </p>
+        </div>
       </Modal>
     </div>
   )
