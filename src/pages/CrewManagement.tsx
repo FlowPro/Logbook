@@ -308,25 +308,27 @@ export function CrewManagement() {
           </div>
           <div>
             <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">{t('crew.passport')}</h4>
-            <div className="grid grid-cols-2 gap-4 mb-3">
-              <Input label={t('crew.passportNumber')} {...register('passportNumber')} />
-              <Input label={t('crew.passportExpiry')} type="date" {...register('passportExpiry')} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <Input label={t('crew.passportNumber')} {...register('passportNumber')} />
+                <Input label={t('crew.passportExpiry')} type="date" {...register('passportExpiry')} />
+              </div>
+              <FileUpload
+                label={t('crew.passportCopy')}
+                disabled={!!import.meta.env.VITE_GH_PAGES}
+                attachments={passportCopy ? [{
+                  id: '1',
+                  name: passportCopy.startsWith('data:application/pdf') ? 'TravelDocument.pdf' : 'TravelDocument.jpg',
+                  type: passportCopy.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg',
+                  data: passportCopy,
+                  size: 0,
+                  uploadedAt: '',
+                }] : []}
+                onUpload={(att) => setPassportCopy(att.data)}
+                onRemove={() => setPassportCopy(undefined)}
+                accept="image/*,application/pdf"
+              />
             </div>
-            <FileUpload
-              label={t('crew.passportCopy')}
-              disabled={!!import.meta.env.VITE_GH_PAGES}
-              attachments={passportCopy ? [{
-                id: '1',
-                name: passportCopy.startsWith('data:application/pdf') ? 'TravelDocument.pdf' : 'TravelDocument.jpg',
-                type: passportCopy.startsWith('data:application/pdf') ? 'application/pdf' : 'image/jpeg',
-                data: passportCopy,
-                size: 0,
-                uploadedAt: '',
-              }] : []}
-              onUpload={(att) => setPassportCopy(att.data)}
-              onRemove={() => setPassportCopy(undefined)}
-              accept="image/*,application/pdf"
-            />
           </div>
           <div>
             <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">{t('crew.address')}</h4>

@@ -7,6 +7,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.1] - 2026-03-01
+
+### Added
+- **Splash screen**: Anker-Animation erscheint sofort beim App-Start (reines HTML/CSS, vor jedem JS) — eliminiert die weisse Seite beim Windows-Start
+
+### Changed
+- **Lazy loading**: Schwere Seiten (Karte, Export, Statistik, Wartung, Lagerplan …) laden erst beim ersten Besuch; initialer JS-Bundle von 3.761 KB auf 591 KB reduziert (6× kleiner, gzip 1.118 KB → 186 KB)
+- **Crew-Modal**: Passnummer und Ablaufdatum links, Passkopie-Upload rechts daneben (2-Spalten-Layout)
+
+---
+
 ## [1.8.0] - 2026-03-01
 
 ### Added
