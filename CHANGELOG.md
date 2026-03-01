@@ -7,6 +7,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.0] - 2026-03-01
+
+### Added
+- **Dashboard**: New 3-row grid layout — Storage alerts moved into the main grid, orthographic globe mini-map (offline, no API key required) with voyage track, lat/lon grid lines and 3-D shading in row 3 right
+- **PortLog → Map link**: Each passage card now has a map button that navigates directly to `/map` and zooms to that passage's entries
+- **PortLog**: Locked passages are hidden by default in the "all years" view; a toggle button shows the count and reveals them
+
+### Fixed
+- **Map dark mode**: MapView now reads `themeMode` (system/light/dark/night) instead of the legacy `darkMode` boolean — the map now correctly follows all four theme modes including system preference
+- **Wind arrows**: Arrows are now rendered on top of the entry dots (`text-anchor: left`) so the tail sits at the observation point and the head points in wind direction; previously they were hidden behind the circle markers
+- **PortLog auto-open**: Active-passage detection now correctly excludes locked passages, preventing a locked passage from always reopening on reload
+
+### Changed
+- **CrewManagement**: Removed `onBoardFrom` / `onBoardTo` date fields from the crew form (only the `isActive` flag is used); active/inactive selection replaced with coloured toggle buttons (green / grey)
+- **Dashboard globe**: Dark mode colours derived from `useSettings()` — no flash of wrong colours on initial render
+
+---
+
 ## [1.6.0] - 2026-02-28
 
 ### Added

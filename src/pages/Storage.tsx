@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -327,7 +328,25 @@ function ItemModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t('storage.quantity')} *</label>
-            <input {...register('quantity')} type="text" inputMode="decimal" className="input w-full" placeholder="0" />
+            <div className="flex">
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = parseFloat(String(watch('quantity') ?? 0).replace(',', '.')) || 0
+                  setValue('quantity', Math.max(0, cur - 1), { shouldValidate: true })
+                }}
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-r-0 border-gray-300 dark:border-gray-600 rounded-l-lg text-gray-700 dark:text-gray-300 font-semibold text-base leading-none transition-colors flex-shrink-0 select-none"
+              >−</button>
+              <input {...register('quantity')} type="text" inputMode="decimal" className="input rounded-none text-center flex-1 min-w-0" placeholder="0" />
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = parseFloat(String(watch('quantity') ?? 0).replace(',', '.')) || 0
+                  setValue('quantity', cur + 1, { shouldValidate: true })
+                }}
+                className="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg text-gray-700 dark:text-gray-300 font-semibold text-base leading-none transition-colors flex-shrink-0 select-none"
+              >+</button>
+            </div>
             {errors.quantity && <p className="text-xs text-red-500 mt-1">{errors.quantity.message}</p>}
           </div>
           <div>
@@ -616,6 +635,7 @@ function ManageAreasModal({
 
 export function Storage() {
   const { t } = useTranslation()
+  const location = useLocation()
 
   const [activeAreaId,    setActiveAreaId]    = useState<number | 'all'>('all')
   const [search,          setSearch]          = useState('')
@@ -623,10 +643,25 @@ export function Storage() {
   const [editingItem,     setEditingItem]     = useState<StorageItem | null>(null)
   const [manageAreasOpen, setManageAreasOpen] = useState(false)
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
+  const [collapsedAreas,  setCollapsedAreas]  = useState<Set<number>>(new Set())
+  const handledItemRef = useRef(false)
 
   const areas    = useLiveQuery(() => db.storageAreas.orderBy('order').toArray())    ?? []
   const sections = useLiveQuery(() => db.storageSections.orderBy('order').toArray()) ?? []
   const items    = useLiveQuery(() => db.storageItems.toArray())                      ?? []
+
+  // Auto-open item when navigated from Search with { state: { editItemId } }
+  useEffect(() => {
+    if (handledItemRef.current || items.length === 0) return
+    const editItemId = (location.state as { editItemId?: number } | null)?.editItemId
+    if (!editItemId) return
+    const item = items.find(i => i.id === editItemId)
+    if (item) {
+      handledItemRef.current = true
+      openEdit(item)
+      window.history.replaceState({}, '')
+    }
+  }, [items, location.state])
 
   const areaMap = useMemo(() => new Map(areas.map(a => [a.id!, a])), [areas])
   const sectionMap = useMemo(() => new Map(sections.map(s => [s.id!, s])), [sections])
@@ -713,36 +748,16 @@ export function Storage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{t('storage.title')}</h1>
-          {totalItems > 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {totalItems} Artikel · {areas.length} {t('storage.area').toLowerCase()}
-            </p>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setManageAreasOpen(true)}
-            title={t('storage.manageAreas')}
-            className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-          >
-            <Settings2 className="w-4 h-4" />
-          </button>
-          <Button icon={<Plus className="w-4 h-4" />} onClick={openAdd} disabled={areas.length === 0}>
-            {t('storage.addItem')}
-          </Button>
-        </div>
-      </div>
+      {/* Toolbar — title · area tabs (scrollable) · search · actions */}
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.storage')}</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
 
-      {/* Area tabs + Search */}
-      <div className="flex flex-col gap-3">
-        <div className="flex gap-1.5 flex-wrap">
+        {/* Horizontally scrollable area tabs */}
+        <div className="flex gap-1.5 overflow-x-auto flex-1 min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => setActiveAreaId('all')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
               activeAreaId === 'all'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
@@ -754,28 +769,27 @@ export function Storage() {
             <button
               key={a.id}
               onClick={() => setActiveAreaId(a.id!)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
                 activeAreaId === a.id
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                activeAreaId === a.id ? 'bg-white/70' : colorDotClass(a.color)
-              }`} />
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${activeAreaId === a.id ? 'bg-white/70' : colorDotClass(a.color)}`} />
               {a.name}
             </button>
           ))}
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        {/* Inline search */}
+        <div className="relative flex-shrink-0">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={t('storage.searchPlaceholder')}
-            className="pl-9 pr-3 py-2 w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="pl-8 pr-7 py-[5px] text-sm w-36 sm:w-44 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
@@ -783,6 +797,18 @@ export function Storage() {
             </button>
           )}
         </div>
+
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+        <button
+          onClick={() => setManageAreasOpen(true)}
+          title={t('storage.manageAreas')}
+          className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+        >
+          <Settings2 className="w-4 h-4" />
+        </button>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={openAdd} disabled={areas.length === 0}>
+          {t('storage.addItem')}
+        </Button>
       </div>
 
       {/* Content */}
@@ -805,47 +831,60 @@ export function Storage() {
           </div>
         </Card>
       ) : (
-        <div className="space-y-8">
-          {groupedItems.map(({ area, groups }) => (
-            <div key={area.id} className="space-y-4">
-              {/* Area header — only when viewing all areas */}
-              {activeAreaId === 'all' && (
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border-l-4 ${areaBadgeClass(area.color)}`}>
-                  <span className="font-bold text-sm">{area.name}</span>
-                  <span className="text-xs opacity-60">
-                    · {groups.reduce((n, g) => n + g.items.length, 0)} Artikel
-                  </span>
-                </div>
-              )}
+        <div className="space-y-3">
+          {groupedItems.map(({ area, groups }) => {
+            const totalCount = groups.reduce((n, g) => n + g.items.length, 0)
+            const isCollapsed = collapsedAreas.has(area.id!)
+            const toggleArea = () => setCollapsedAreas(prev => {
+              const next = new Set(prev)
+              if (next.has(area.id!)) next.delete(area.id!)
+              else next.add(area.id!)
+              return next
+            })
+            return (
+              <div key={area.id} className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                {/* Area header — always shown as collapsible */}
+                <button
+                  onClick={toggleArea}
+                  className={`w-full flex items-center gap-2 px-4 py-3 text-left border-l-4 ${areaBadgeClass(area.color)} hover:brightness-95 transition-all`}
+                >
+                  <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`} />
+                  <span className="font-semibold text-sm flex-1">{area.name}</span>
+                  <span className="text-xs opacity-60">{totalCount} Artikel</span>
+                </button>
 
-              {/* Section groups */}
-              <div className="space-y-4">
-                {groups.map(({ section, items: groupItems }) => (
-                  <div key={section?.id ?? 'none'} className="space-y-2">
-                    {/* Section header */}
-                    <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider px-1 flex items-center gap-1.5">
-                      {section?.name ?? t('storage.noCompartment')}
-                      <span className="font-normal normal-case opacity-60">({groupItems.length})</span>
-                    </h3>
+                {/* Section groups — hidden when collapsed */}
+                {!isCollapsed && (
+                  <div className="p-4 space-y-5">
+                    {groups.map(({ section, items: groupItems }) => (
+                      <div key={section?.id ?? 'none'} className="space-y-2">
+                        {/* Section header */}
+                        <h3 className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider px-1 pb-1.5 border-b border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${colorDotClass(area.color)}`} />
+                          {section?.name ?? t('storage.noCompartment')}
+                          <span className="font-normal normal-case text-gray-400 dark:text-gray-500">({groupItems.length})</span>
+                        </h3>
 
-                    {/* Items grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {groupItems.map(item => (
-                        <ItemCard
-                          key={item.id}
-                          item={item}
-                          areaColor={areaMap.get(item.areaId)?.color}
-                          onEdit={() => openEdit(item)}
-                          onDelete={() => setDeleteConfirmId(item.id!)}
-                          onCopy={() => handleCopy(item)}
-                        />
-                      ))}
-                    </div>
+                        {/* Items grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {groupItems.map(item => (
+                            <ItemCard
+                              key={item.id}
+                              item={item}
+                              areaColor={areaMap.get(item.areaId)?.color}
+                              onEdit={() => openEdit(item)}
+                              onDelete={() => setDeleteConfirmId(item.id!)}
+                              onCopy={() => handleCopy(item)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

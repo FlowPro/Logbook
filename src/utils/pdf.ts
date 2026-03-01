@@ -707,8 +707,8 @@ export async function generateCrewListPDF(
     m.passportNumber,
     m.passportExpiry,
     m.role === 'skipper' ? 'Skipper' : m.role === 'crew' ? 'Crew' : 'Passenger',
-    m.onBoardFrom,
-    m.onBoardTo ?? 'ongoing',
+    m.onBoardFrom ?? '—',
+    m.onBoardTo ?? '—',
   ])
 
   autoTable(doc, {

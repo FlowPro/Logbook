@@ -234,3 +234,53 @@ html.night {
 .beaufort-10 { @apply bg-purple-200 text-purple-900; }
 .beaufort-11 { @apply bg-purple-300 text-purple-900; }
 .beaufort-12 { @apply bg-black text-white; }
+
+
+/* Recharts tooltip — dark mode */
+.dark .recharts-default-tooltip {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+  color: #f9fafb !important;
+}
+.dark .recharts-tooltip-label {
+  color: #d1d5db !important;
+}
+.dark .recharts-tooltip-item {
+  color: #e5e7eb !important;
+}
+
+/* Ship current position marker */
+.ship-position-marker {
+  width: 22px;
+  height: 22px;
+  position: relative;
+  cursor: pointer;
+}
+.ship-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.35);
+  animation: ship-pulse 2s ease-out infinite;
+}
+.ship-pulse-dot {
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 1.5px rgba(16, 185, 129, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+/* Brighter ring + dot on dark maps for better contrast */
+.dark .ship-pulse-ring {
+  background: rgba(52, 211, 153, 0.45);
+}
+.dark .ship-pulse-dot {
+  background: #34D399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.8), 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+@keyframes ship-pulse {
+  0%   { transform: scale(1);   opacity: 0.75; }
+  70%  { transform: scale(2.5); opacity: 0;    }
+  100% { transform: scale(2.5); opacity: 0;    }
+}

@@ -683,15 +683,15 @@ export function Safety() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold">{t('safety.title')}</h1>
-
-      {/* Type selector */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex-wrap">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.safety')}</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
         {CHECKLIST_TYPES.map(type => (
           <button
             key={type}
             onClick={() => setActiveType(type)}
-            className={`py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
+            className={`py-1.5 px-3 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
               activeType === type
                 ? type === 'crew_briefing'
                   ? 'bg-purple-600 text-white'

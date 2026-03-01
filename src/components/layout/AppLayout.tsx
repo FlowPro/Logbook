@@ -222,6 +222,7 @@ export function AppLayout() {
 
   // Silent startup update check — only in Tauri desktop builds.
   // Runs once after 5 s; shows a toast with an Install action if a newer version is available.
+  // Clicking "Install" directly starts the download+install without navigating to Settings.
   useEffect(() => {
     if (!isTauri) return
     const timer = setTimeout(async () => {
@@ -229,11 +230,34 @@ export function AppLayout() {
         const { check } = await import('@tauri-apps/plugin-updater')
         const update = await check()
         if (!update) return
+
+        const installToastId = 'update-install'
         toast(t('settings.updateAvailable', { version: update.version }), {
+          id: installToastId,
           duration: 0, // persist until dismissed
           action: {
             label: t('settings.installUpdate'),
-            onClick: () => navigate('/settings#update'),
+            onClick: async () => {
+              toast.dismiss(installToastId)
+              const progressId = 'update-progress'
+              toast.loading(t('settings.updateDownloading'), { id: progressId, duration: 0 })
+              try {
+                const { invoke } = await import('@tauri-apps/api/core')
+                await invoke('clear_webview_cache').catch(() => {})
+                if ('caches' in window) {
+                  for (const k of await caches.keys()) {
+                    if (k !== 'protomaps-tiles-precache') await caches.delete(k)
+                  }
+                }
+                await update.downloadAndInstall()
+                await invoke('kill_bridge').catch(() => {})
+                const { relaunch } = await import('@tauri-apps/plugin-process')
+                await relaunch()
+              } catch {
+                toast.dismiss(progressId)
+                toast.error(t('settings.updateInstallError'))
+              }
+            },
           },
         })
       } catch {

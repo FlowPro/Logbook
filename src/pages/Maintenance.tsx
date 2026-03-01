@@ -611,44 +611,36 @@ export function Maintenance() {
   return (
     <div className="space-y-4">
 
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold">{t('maintenance.title')}</h1>
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex-wrap">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.maintenance')}</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+        {[{ value: 'all', label: t('common.all') }, ...categoryOptions].map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setFilterCat(opt.value)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
+              filterCat === opt.value
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+            }`}
+          >
+            {opt.value !== 'all' ? `${CAT_EMOJI[opt.value]} ${opt.label}` : opt.label}
+          </button>
+        ))}
+        <select
+          value={filterYear}
+          onChange={e => setFilterYear(e.target.value)}
+          className="px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+          title={t('maintenance.filterYear')}
+        >
+          <option value="all">{t('maintenance.allYears')}</option>
+          {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <div className="flex-1" />
         <Button icon={<PlusCircle className="w-4 h-4" />} onClick={() => openAdd('planned')}>
           {t('maintenance.newTask')}
         </Button>
-      </div>
-
-      {/* Filters row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Category filter */}
-        <div className="flex gap-2 flex-wrap">
-          {[{ value: 'all', label: t('common.all') }, ...categoryOptions].map(opt => (
-            <button
-              key={opt.value}
-              onClick={() => setFilterCat(opt.value)}
-              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                filterCat === opt.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              {opt.value !== 'all' ? `${CAT_EMOJI[opt.value]} ${opt.label}` : opt.label}
-            </button>
-          ))}
-        </div>
-        {/* Year filter — affects Erledigt + Archiv */}
-        {availableYears.length > 0 && (
-          <select
-            value={filterYear}
-            onChange={e => setFilterYear(e.target.value)}
-            className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-[5px] bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-            title={t('maintenance.filterYear')}
-          >
-            <option value="all">{t('maintenance.allYears')}</option>
-            {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        )}
       </div>
 
       {/* Kanban board */}

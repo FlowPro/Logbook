@@ -65,6 +65,10 @@ export function Emergency() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('nav.emergency')}</span>
+      </div>
+
       {/* MOB Alert */}
       <div
         className="bg-red-600 text-white rounded-2xl p-6 text-center shadow-2xl cursor-pointer select-none active:scale-95 transition-transform"

@@ -42,8 +42,6 @@ const schema = z.object({
     number: z.string(),
   })),
   role: z.enum(['skipper', 'crew', 'passenger']),
-  onBoardFrom: z.string(),
-  onBoardTo: z.string().optional(),
   isActive: z.boolean(),
 })
 
@@ -56,7 +54,6 @@ const DEFAULTS: FormData = {
   phone: '', email: '', emergencyContact: '', emergencyPhone: '',
   qualifications: [],
   role: 'crew',
-  onBoardFrom: new Date().toISOString().split('T')[0],
   isActive: true,
 }
 
@@ -88,7 +85,7 @@ export function CrewManagement() {
   const visibleCrew = showInactive ? sortedCrew : sortedCrew.filter(m => m.isActive)
   const inactiveCount = sortedCrew.filter(m => !m.isActive).length
 
-  const { register, control, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const { register, control, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: DEFAULTS,
   })
@@ -116,7 +113,6 @@ export function CrewManagement() {
       bloodType: member.bloodType, medications: member.medications, allergies: member.allergies,
       qualifications: member.qualifications ?? [],
       role: member.role,
-      onBoardFrom: member.onBoardFrom, onBoardTo: member.onBoardTo,
       isActive: member.isActive,
     })
     setPassportCopy(member.passportCopy)
@@ -157,18 +153,20 @@ export function CrewManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-2xl font-bold">{t('crew.title')}</h1>
-          {inactiveCount > 0 && (
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.crew')}</span>
+        {inactiveCount > 0 && (
+          <>
+            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
             <button
               onClick={() => setShowInactive(v => !v)}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline-offset-2 hover:underline"
+              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline-offset-2 hover:underline flex-shrink-0"
             >
               {showInactive ? t('crew.hideInactive') : t('crew.showInactive', { count: inactiveCount })}
             </button>
-          )}
-        </div>
+          </>
+        )}
+        <div className="flex-1" />
         <Button icon={<PlusCircle className="w-4 h-4" />} onClick={openAdd}>
           {t('crew.addMember')}
         </Button>
@@ -205,10 +203,6 @@ export function CrewManagement() {
                   <div className="flex justify-between text-gray-600 dark:text-gray-400">
                     <span>{t('crew.passportNumber')}</span>
                     <span className="font-mono">{member.passportNumber || '—'}</span>
-                  </div>
-                  <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                    <span>{t('crew.onBoardFrom')}</span>
-                    <span className="font-mono">{member.onBoardFrom}</span>
                   </div>
                 </div>
                 {member.qualifications?.length > 0 && (
@@ -384,15 +378,37 @@ export function CrewManagement() {
           </div>
           <div>
             <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-3">{t('crew.role')}</h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <Select label={t('crew.role')} options={roleOptions} {...register('role')} />
-              <Input label={t('crew.onBoardFrom')} type="date" {...register('onBoardFrom')} />
-              <Input label={t('crew.onBoardTo')} type="date" {...register('onBoardTo')} />
-              <div className="flex items-end pb-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" {...register('isActive')} className="w-4 h-4 rounded" />
-                  <span className="text-sm font-medium">{t('crew.active')}</span>
-                </label>
+              <div>
+                <label className="label">{t('crew.active')}</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 h-[38px]">
+                  <button
+                    type="button"
+                    onClick={() => setValue('isActive', true)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors ${
+                      watch('isActive')
+                        ? 'bg-green-500 text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-950/40'
+                    }`}
+                  >
+                    <span className="text-base leading-none">{watch('isActive') ? '●' : '○'}</span>
+                    {t('crew.active')}
+                  </button>
+                  <div className="w-px bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
+                  <button
+                    type="button"
+                    onClick={() => setValue('isActive', false)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors ${
+                      !watch('isActive')
+                        ? 'bg-gray-500 text-white'
+                        : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    <span className="text-base leading-none">{!watch('isActive') ? '●' : '○'}</span>
+                    {t('crew.inactive')}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

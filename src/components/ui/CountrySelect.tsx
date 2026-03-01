@@ -201,11 +201,10 @@ const COUNTRIES: Country[] = [
   { code: 'ZW', name: 'Zimbabwe', flag: '🇿🇼' },
 ]
 
-function getDisplayText(value: string, valueType: 'code' | 'name'): string {
+function getDisplayText(value: string, _valueType: 'code' | 'name'): string {
   if (!value) return ''
-  const country = valueType === 'code'
-    ? COUNTRIES.find(c => c.code === value)
-    : COUNTRIES.find(c => c.name === value)
+  // Try exact code match first, then name match (handles legacy data in either format)
+  const country = COUNTRIES.find(c => c.code === value) ?? COUNTRIES.find(c => c.name === value)
   return country ? country.name : value
 }
 
@@ -244,10 +243,9 @@ export function CountrySelect({
 
   const selectedCountry = useMemo(() => {
     if (!value) return null
-    return valueType === 'code'
-      ? COUNTRIES.find(c => c.code === value) ?? null
-      : COUNTRIES.find(c => c.name === value) ?? null
-  }, [value, valueType])
+    // Normalize: accept both code and name regardless of valueType (handles legacy data)
+    return COUNTRIES.find(c => c.code === value) ?? COUNTRIES.find(c => c.name === value) ?? null
+  }, [value])
 
   // Reset focused index when filtered list changes
   useEffect(() => { setFocusedIndex(-1) }, [inputValue])

@@ -410,7 +410,9 @@ export function Settings() {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('nav.settings')}</span>
+      </div>
 
       {/* Language */}
       <Card>

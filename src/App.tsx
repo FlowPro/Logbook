@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 // GitHub Pages uses HashRouter (no server-side routing) — all other environments use BrowserRouter
 const Router = import.meta.env.VITE_GH_PAGES ? HashRouter : BrowserRouter
@@ -17,13 +18,22 @@ import { Safety } from './pages/Safety'
 import { Search } from './pages/Search'
 import { MapView } from './pages/MapView'
 import { Storage } from './pages/Storage'
-import { db, initSettings } from './db/database'
+import { db, initSettings, importAllData } from './db/database'
 
 function App() {
   useEffect(() => {
     initSettings().catch(console.error)
-    // Uncomment to seed demo data for development:
-    // seedDemoData().catch(console.error)
+
+    // On GitHub Pages: auto-load demo data if the database is empty
+    if (import.meta.env.VITE_GH_PAGES) {
+      db.logEntries.count().then(count => {
+        if (count > 0) return
+        return fetch(`${import.meta.env.BASE_URL}demo-backup.json`)
+          .then(r => r.json())
+          .then(json => importAllData(JSON.stringify(json)))
+          .then(() => toast.success('Demo data loaded — explore the app!', { duration: 5000 }))
+      }).catch(console.error)
+    }
   }, [])
 
   return (

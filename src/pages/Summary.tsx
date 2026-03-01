@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { subDays, format, parseISO } from 'date-fns'
@@ -10,13 +10,12 @@ import {
 import { BarChart3, Wind, Navigation, Gauge, Anchor, Thermometer } from 'lucide-react'
 import { db } from '../db/database'
 import { Card, CardHeader } from '../components/ui/Card'
-import { Select } from '../components/ui/Select'
 import { fmtNum } from '../utils/units'
 import React from 'react'
 
-type Period = 'yesterday' | 'last7' | 'last30' | 'last90' | 'custom' | 'passage'
+type Period = 'yesterday' | 'last7' | 'last30' | 'last90' | 'season' | 'passage'
 
-function getPeriodDates(period: Exclude<Period, 'passage'>, customStart?: string, customEnd?: string): { start: string; end: string } {
+function getPeriodDates(period: Exclude<Period, 'passage' | 'season'>): { start: string; end: string } {
   const today = new Date()
   const end = format(today, 'yyyy-MM-dd')
   switch (period) {
@@ -24,7 +23,6 @@ function getPeriodDates(period: Exclude<Period, 'passage'>, customStart?: string
     case 'last7': return { start: format(subDays(today, 7), 'yyyy-MM-dd'), end }
     case 'last30': return { start: format(subDays(today, 30), 'yyyy-MM-dd'), end }
     case 'last90': return { start: format(subDays(today, 90), 'yyyy-MM-dd'), end }
-    case 'custom': return { start: customStart ?? format(subDays(today, 30), 'yyyy-MM-dd'), end: customEnd ?? end }
     default: return { start: format(subDays(today, 30), 'yyyy-MM-dd'), end }
   }
 }
@@ -65,18 +63,25 @@ const SAIL_COLORS = ['#3b82f6', '#f59e0b']
 export function Summary() {
   const { t } = useTranslation()
   const [period, setPeriod] = useState<Period>('last30')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
   const [selectedPassageId, setSelectedPassageId] = useState<number | null>(null)
+  const [selectedSeasonYear, setSelectedSeasonYear] = useState<number>(new Date().getFullYear())
 
   const passages = useLiveQuery(() =>
     db.passages.orderBy('departureDate').reverse().toArray()
   )
 
+  const availableYears = useMemo(() => {
+    if (!passages || passages.length === 0) return [new Date().getFullYear()]
+    const ys = new Set(passages.map(p => parseInt(p.departureDate.slice(0, 4))))
+    return [...ys].sort((a, b) => b - a)
+  }, [passages])
+
   const selectedPassage = passages?.find(p => p.id === selectedPassageId)
   const { start, end } = period === 'passage' && selectedPassage
     ? { start: selectedPassage.departureDate, end: selectedPassage.arrivalDate }
-    : getPeriodDates(period === 'passage' ? 'last30' : period, customStart, customEnd)
+    : period === 'season'
+    ? { start: `${selectedSeasonYear}-01-01`, end: `${selectedSeasonYear}-12-31` }
+    : getPeriodDates(period as Exclude<Period, 'passage' | 'season'>)
 
   const entries = useLiveQuery(async () => {
     return db.logEntries.where('date').between(start, end, true, true).toArray()
@@ -115,14 +120,14 @@ export function Summary() {
 
   // Speed + wind (all entries, newest last)
   const speedData = entries?.slice().sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).map(e => ({
-    time: e.time,
+    time: `${e.date} ${e.time}`,
     sog: e.speedOverGround ?? 0,
     wind: e.windTrueSpeed,
   })) ?? []
 
   // Barometer
   const baroData = entries?.slice().sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)).map(e => ({
-    time: e.time,
+    time: `${e.date} ${e.time}`,
     hPa: e.baroPressureHPa,
   })) ?? []
 
@@ -185,17 +190,16 @@ export function Summary() {
     { value: 'last7',     label: t('summary.last7') },
     { value: 'last30',    label: t('summary.last30') },
     { value: 'last90',    label: t('summary.last90') },
-    { value: 'passage',   label: 'Passage' },
-    { value: 'custom',    label: t('summary.custom') },
+    { value: 'season',    label: t('summary.season') },
+    { value: 'passage',   label: t('summary.passage') },
   ]
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t('summary.title')}</h1>
-
       {/* Period selector */}
-      <Card>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.summary')}</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
           {periods.map(p => (
             <button
               key={p.value}
@@ -207,40 +211,35 @@ export function Summary() {
               {p.label}
             </button>
           ))}
-        </div>
-        {period === 'custom' && (
-          <div className="flex gap-4 mt-3">
-            <div>
-              <label className="label">Von</label>
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="input" />
-            </div>
-            <div>
-              <label className="label">Bis</label>
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="input" />
-            </div>
-          </div>
-        )}
-        {period === 'passage' && (
-          <div className="mt-3">
-            {passages && passages.length > 0 ? (
-              <Select
-                label={t('summary.selectPassage')}
-                value={selectedPassageId != null ? String(selectedPassageId) : ''}
-                onChange={e => setSelectedPassageId(e.target.value ? Number(e.target.value) : null)}
-                options={[
-                  { value: '', label: `— ${t('summary.selectPassage')} —` },
-                  ...passages.map(p => ({
-                    value: String(p.id),
-                    label: `${p.departurePort} → ${p.arrivalPort} (${p.departureDate} – ${p.arrivalDate ?? '…'})`,
-                  })),
-                ]}
-              />
-            ) : (
-              <p className="text-sm text-gray-400 italic">{t('summary.noPassages')}</p>
-            )}
-          </div>
-        )}
-      </Card>
+          {period === 'season' && (
+            <select
+              value={String(selectedSeasonYear)}
+              onChange={e => setSelectedSeasonYear(Number(e.target.value))}
+              className="px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors cursor-pointer"
+            >
+              {availableYears.map(y => (
+                <option key={y} value={String(y)}>{y}</option>
+              ))}
+            </select>
+          )}
+          {period === 'passage' && passages && passages.length > 0 && (
+            <select
+              value={selectedPassageId != null ? String(selectedPassageId) : ''}
+              onChange={e => setSelectedPassageId(e.target.value ? Number(e.target.value) : null)}
+              className="px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors cursor-pointer"
+            >
+              <option value="">— {t('summary.selectPassage')} —</option>
+              {passages.map(p => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.departurePort} → {p.arrivalPort} ({p.departureDate} – {p.arrivalDate ?? '…'})
+                </option>
+              ))}
+            </select>
+          )}
+          {period === 'passage' && passages && passages.length === 0 && (
+            <p className="text-sm text-gray-400 italic">{t('summary.noPassages')}</p>
+          )}
+      </div>
 
       {/* KPI tiles */}
       {stats && (

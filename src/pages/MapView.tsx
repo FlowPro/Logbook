@@ -5,6 +5,7 @@ import { layers, namedFlavor } from '@protomaps/basemaps'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { Wind, Layers, Download, X } from 'lucide-react'
 import { db } from '../db/database'
 import { useSettings } from '../hooks/useSettings'
@@ -136,13 +137,16 @@ interface MapData {
 export function MapView() {
   const { t } = useTranslation()
   const { settings } = useSettings()
+  const location         = useLocation()
   const mapContainerRef  = useRef<HTMLDivElement>(null)
   const mapRef           = useRef<maplibregl.Map | null>(null)
   const dataRef          = useRef<MapData | null>(null)
-  const appliedStyleRef  = useRef<'light' | 'dark'>('light')
   const cacheAbortRef    = useRef<AbortController | null>(null)
+  const shipMarkerRef    = useRef<maplibregl.Marker | null>(null)
+  // Save viewport before map recreation so center/zoom survive dark/light switch
+  const savedCenterRef   = useRef<[number, number] | null>(null)
+  const savedZoomRef     = useRef<number | null>(null)
   const [mapReady, setMapReady] = useState(false)
-  const [mapStyleReady, setMapStyleReady] = useState(0)
 
   const [filterMode,        setFilterMode]        = useState<FilterMode>('all')
   const [selectedPassageId, setSelectedPassageId] = useState<number | null>(null)
@@ -154,8 +158,22 @@ export function MapView() {
   const [cacheProgress, setCacheProgress] = useState(0) // 0-100
 
   const settingsLoaded = settings !== undefined
-  const isDark         = settings?.darkMode ?? false
-  const desiredStyle   = isDark ? 'dark' : 'light'
+
+  // Mirror the same dark-mode logic used by AppLayout / Header.
+  // The Header writes `themeMode` (system/light/dark/night), NOT the legacy `darkMode` boolean.
+  const [prefersDark, setPrefersDark] = useState(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => setPrefersDark(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  const themeMode    = settings?.themeMode ?? (settings?.darkMode ? 'dark' : 'system')
+  const isDark       = themeMode === 'dark' || themeMode === 'night' || (themeMode === 'system' && prefersDark)
+  const desiredStyle = isDark ? 'dark' : 'light'
+
   const apiKey         = settings?.protomapsApiKey?.trim() ?? ''
   const hasApiKey      = apiKey.length > 0
 
@@ -184,6 +202,11 @@ export function MapView() {
     const ys = new Set(passages.map(p => parseInt(p.departureDate.slice(0, 4))))
     return [...ys].sort((a, b) => b - a)
   }, [passages])
+
+  // Last log entry overall — always global, used for ship position marker
+  const lastEntry = useLiveQuery(() =>
+    db.logEntries.orderBy('[date+time]').last()
+  )
 
   const entries = useLiveQuery(async () => {
     if (filterMode === 'passage' && selectedPassageId != null) {
@@ -232,6 +255,7 @@ export function MapView() {
     const pointFeatures: any[] = valid.map(e => ({
       type: 'Feature',
       properties: {
+        passageId: e.passageId ?? null,
         motor:   e.engineOn ? 1 : 0,
         bft:     e.windBeaufort ?? 0,
         windDir: e.windTrueDirection ?? null,
@@ -299,19 +323,6 @@ export function MapView() {
     })
 
     map.addSource('wind', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    map.addLayer({
-      id: 'wind-arrows', type: 'symbol', source: 'wind', minzoom: 6,
-      layout: {
-        'text-field': '→',
-        'text-size': 16,
-        'text-rotate': ['-', ['get', 'windDir'], 90],
-        'text-rotation-alignment': 'map',
-        'text-allow-overlap': false,
-        'text-ignore-placement': false,
-      },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      paint: { 'text-color': BFT_COLOR_EXPR as any, 'text-halo-color': 'rgba(0,0,0,0.55)', 'text-halo-width': 1.2 },
-    })
 
     map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
 
@@ -345,6 +356,26 @@ export function MapView() {
         'circle-stroke-width': 2,
         'circle-opacity': 0.95,
       },
+    })
+
+    // Wind arrows rendered on top of dots.
+    // text-anchor:'left' = the coordinate (dot center) is at the LEFT (tail) of the arrow,
+    // so the arrow extends FROM the dot in the wind direction — like a weather barb.
+    map.addLayer({
+      id: 'wind-arrows', type: 'symbol', source: 'wind', minzoom: 3,
+      layout: {
+        'text-field': '→',
+        'text-font': ['Noto Sans Regular', 'Arial Unicode MS Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 3, 12, 6, 16, 10, 22],
+        'text-rotate': ['-', ['get', 'windDir'], 90],
+        'text-rotation-alignment': 'map',
+        'text-anchor': 'left',
+        'text-offset': ['literal', [0.4, 0]],
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      paint: { 'text-color': BFT_COLOR_EXPR as any, 'text-halo-color': 'rgba(0,0,0,0.6)', 'text-halo-width': 1.5 },
     })
 
     const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '268px' })
@@ -406,25 +437,25 @@ export function MapView() {
   }, [])
 
   // ── Map initialisation ────────────────────────────────────────────────────────
-  // Wait for settings to load before creating the map so the correct
-  // dark/light style (and Protomaps API key) are known from the start,
-  // eliminating the forced style-switch that caused routes to disappear.
+  // desiredStyle / hasApiKey / apiKey are direct deps so React recreates the map
+  // whenever dark/light mode or the Protomaps key changes — no setStyle() needed.
 
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current || !settingsLoaded) return
+    if (!mapContainerRef.current || !settingsLoaded) return
 
     const pmtilesProtocol = new Protocol()
     maplibregl.addProtocol('pmtiles', pmtilesProtocol.tile)
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const style = (hasApiKey ? makeProtomapsStyle(apiKey, desiredStyle) : FALLBACK_STYLES[desiredStyle]) as any
+
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      style: resolveStyle(desiredStyle) as any,
-      center: [10, 48],
-      zoom: 4,
+      style,
+      center: savedCenterRef.current ?? [10, 48],
+      zoom:   savedZoomRef.current   ?? 4,
       attributionControl: false,
     })
-    appliedStyleRef.current = desiredStyle
 
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'top-right')
     map.addControl(new maplibregl.ScaleControl({ unit: 'nautical' }), 'bottom-left')
@@ -438,29 +469,17 @@ export function MapView() {
     })
 
     return () => {
+      // Preserve viewport so the new map starts at the same position
+      try {
+        savedCenterRef.current = map.getCenter().toArray() as [number, number]
+        savedZoomRef.current   = map.getZoom()
+      } catch { /* map may already be in invalid state */ }
       maplibregl.removeProtocol('pmtiles')
       map.remove()
       mapRef.current = null
       setMapReady(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsLoaded])
-
-  // ── Style switch: follows global dark mode ────────────────────────────────────
-
-  useEffect(() => {
-    const map = mapRef.current
-    if (!mapReady || !map) return
-    if (appliedStyleRef.current === desiredStyle) return
-    appliedStyleRef.current = desiredStyle
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    map.setStyle(resolveStyle(desiredStyle) as any)
-    map.once('style.load', () => {
-      setupLayers(map)
-      setMapStyleReady(v => v + 1) // triggers data update effect with latest geojson
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [desiredStyle, mapReady])
+  }, [settingsLoaded, desiredStyle, hasApiKey, apiKey, setupLayers, fillSources])
 
   // ── Update sources when data/filter changes ───────────────────────────────────
 
@@ -468,7 +487,7 @@ export function MapView() {
     const map = mapRef.current
     if (!mapReady || !map) return
     fillSources(map, geojson)
-  }, [mapReady, mapStyleReady, geojson, fillSources])
+  }, [mapReady, geojson, fillSources])
 
   // ── Wind layer visibility ─────────────────────────────────────────────────────
 
@@ -477,6 +496,71 @@ export function MapView() {
     if (!mapReady || !map) return
     map.setLayoutProperty('wind-arrows', 'visibility', showWind ? 'visible' : 'none')
   }, [mapReady, showWind])
+
+  // ── Passage deep-link: fitBounds to specific passage from navigation state ────
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || !geojson) return
+    const linkPassageId = (location.state as { passageId?: number } | null)?.passageId
+    if (!linkPassageId) return
+    // Zoom to this passage's entries
+    const pts = geojson.pointFeatures.filter(f => f.properties.passageId === linkPassageId)
+    if (pts.length === 0) return
+    const lons = pts.map((f: { geometry: { coordinates: number[] } }) => f.geometry.coordinates[0])
+    const lats = pts.map((f: { geometry: { coordinates: number[] } }) => f.geometry.coordinates[1])
+    map.fitBounds(
+      [[Math.min(...lons) - 0.5, Math.min(...lats) - 0.5], [Math.max(...lons) + 0.5, Math.max(...lats) + 0.5]],
+      { padding: 60, maxZoom: 12, duration: 800 }
+    )
+    // Clear the state so a refresh doesn't re-trigger
+    window.history.replaceState({}, '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, geojson])
+
+  // ── Ship position marker (last log entry) ─────────────────────────────────────
+
+  useEffect(() => {
+    const map = mapRef.current
+    // Remove stale marker first
+    shipMarkerRef.current?.remove()
+    shipMarkerRef.current = null
+
+    if (!mapReady || !map) return
+    if (!lastEntry || lastEntry.latitude?.degrees == null || lastEntry.longitude?.degrees == null) return
+
+    const lng = toDecimal(lastEntry.longitude)
+    const lat = toDecimal(lastEntry.latitude)
+
+    const el = document.createElement('div')
+    el.className = 'ship-position-marker'
+    el.innerHTML = '<div class="ship-pulse-ring"></div><div class="ship-pulse-dot"></div>'
+
+    const mooring    = lastEntry.mooringStatus ?? 'underway'
+    const isUnderway = mooring === 'underway'
+    const statusLine = isUnderway
+      ? `${lastEntry.engineOn ? '⚙ Motor' : '⛵ Segel'} · SOG ${(lastEntry.speedOverGround ?? 0).toFixed(1)} kn`
+      : `⚓ ${MOORING_LABEL[mooring] ?? mooring}`
+
+    const popup = new maplibregl.Popup({ offset: 14, closeButton: false, closeOnClick: true })
+      .setHTML(`
+        <div style="font-size:12px;line-height:1.75;color:#111827;padding:2px 0">
+          <div style="font-weight:700;color:#059669;margin-bottom:2px">● Letzte Position</div>
+          <div>${lastEntry.date} · ${lastEntry.time} UTC</div>
+          <div style="color:#374151">${statusLine}</div>
+        </div>
+      `)
+
+    shipMarkerRef.current = new maplibregl.Marker({ element: el })
+      .setLngLat([lng, lat])
+      .setPopup(popup)
+      .addTo(map)
+
+    return () => {
+      shipMarkerRef.current?.remove()
+      shipMarkerRef.current = null
+    }
+  }, [mapReady, lastEntry])
 
   // ── Offline pre-cache handler ─────────────────────────────────────────────────
 
@@ -513,6 +597,8 @@ export function MapView() {
 
       {/* Filter + controls bar */}
       <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.map')}</span>
+        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
 
         {/* Left: filter buttons + inline selector */}
         <div className="flex items-center gap-2 flex-1 min-w-0">

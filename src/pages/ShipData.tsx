@@ -111,18 +111,17 @@ export function ShipData({ embedded = false }: ShipDataProps) {
   return (
     <div className={embedded ? 'space-y-6' : 'max-w-3xl mx-auto space-y-6'}>
       {!embedded && (
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-bold">{t('ship.title')}</h1>
-          <div className="flex gap-2">
-            {ship && (
-              <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={() => generateShipDossierPDF(ship)}>
-                {t('ship.printDossier')}
-              </Button>
-            )}
-            <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
-              {saved ? t('common.saved') : t('common.save')}
+        <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+          <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.ship')}</span>
+          <div className="flex-1" />
+          {ship && (
+            <Button variant="secondary" icon={<Printer className="w-4 h-4" />} onClick={() => generateShipDossierPDF(ship)}>
+              {t('ship.printDossier')}
             </Button>
-          </div>
+          )}
+          <Button onClick={handleSubmit(onSubmit)} loading={saving} icon={<Save className="w-4 h-4" />}>
+            {saved ? t('common.saved') : t('common.save')}
+          </Button>
         </div>
       )}
 

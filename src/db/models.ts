@@ -110,7 +110,7 @@ export interface CrewMember {
   qualifications: SailingCertificate[]
   // Role & dates
   role: CrewRole
-  onBoardFrom: string
+  onBoardFrom?: string
   onBoardTo?: string
   // Metadata
   isActive: boolean

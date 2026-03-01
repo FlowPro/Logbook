@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -23,7 +23,7 @@ import {
   Package,
   Clock,
 } from 'lucide-react'
-import type { MooringStatus, MaintenanceEntry, StorageItem } from '../db/models'
+import type { MooringStatus, MaintenanceEntry, StorageItem, LogEntry, Coordinate } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { db } from '../db/database'
@@ -32,6 +32,7 @@ import { Badge } from '../components/ui/Badge'
 import { formatCoordinate } from '../utils/geo'
 import { Button } from '../components/ui/Button'
 import { fmtNum } from '../utils/units'
+import { useSettings } from '../hooks/useSettings'
 
 function trendIcon(trend?: string): string {
   switch (trend) {
@@ -70,6 +71,20 @@ function getDueInfo(dueDate: string, today: string): { label: string; colorClass
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { settings } = useSettings()
+
+  // Mirror AppLayout dark-mode logic so the globe SVG always gets the right colors
+  const [prefersDark, setPrefersDark] = useState(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = (e: MediaQueryListEvent) => setPrefersDark(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  const themeMode = settings?.themeMode ?? (settings?.darkMode ? 'dark' : 'system')
+  const isDark = themeMode === 'dark' || themeMode === 'night' || (themeMode === 'system' && prefersDark)
 
   const today = new Date().toISOString().slice(0, 10)
   const in14days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
@@ -89,6 +104,10 @@ export function Dashboard() {
   )
   const recentEntries = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().limit(5).toArray()
+  )
+  // All entries for the mini track SVG (chronological)
+  const trackEntries = useLiveQuery(() =>
+    db.logEntries.orderBy('[date+time]').toArray()
   )
   const ship = useLiveQuery(() => db.ship.toCollection().first())
   const activeCrew = useLiveQuery(() =>
@@ -188,16 +207,15 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {ship?.name ?? t('nav.dashboard')}
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
-            {format(new Date(), 'EEEE, dd. MMMM yyyy')}
-          </p>
-        </div>
+      {/* Header bar */}
+      <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
+          {ship?.name ?? t('nav.dashboard')}
+        </span>
+        <span className="text-sm text-gray-400 dark:text-gray-500 hidden sm:inline flex-shrink-0">
+          {format(new Date(), 'EEEE, dd. MMMM yyyy')}
+        </span>
+        <div className="flex-1" />
         <Link to="/ports">
           <Button icon={<PlusCircle className="w-4 h-4" />}>
             {t('logEntry.newEntry')}
@@ -240,11 +258,11 @@ export function Dashboard() {
         </Link>
       </div>
 
-      {/* Main content: 2-row × 3-col grid
+      {/* Main content: 3-row × 3-col grid
             Row 1 (auto):  Maintenance (col 1-2)  |  Bordstatus (col 3)
-            Row 2 (1fr):   Last Entry  (col 1-2)  |  Crew       (col 3)
-          Cards in the same row are forced to equal height via CSS grid stretch + h-full. */}
-      <div className="grid md:grid-cols-3 md:grid-rows-[auto_1fr] gap-6">
+            Row 2 (auto):  Storage     (col 1-2)  |  Crew       (col 3)
+            Row 3 (1fr):   Last Entry  (col 1-2)  |  Mini Track (col 3)  */}
+      <div className="grid md:grid-cols-3 gap-6">
 
         {/* ── Row 1, left (col 1-2): Maintenance alerts ── */}
         <div className="md:col-span-2 md:row-start-1">
@@ -344,8 +362,105 @@ export function Dashboard() {
           </Card>
         </div>
 
-        {/* ── Row 2, left (col 1-2): Last log entry ── */}
+        {/* ── Row 2, left (col 1-2): Storage alerts ── */}
         <div className="md:col-span-2 md:row-start-2">
+          <Card className="h-full">
+            <CardHeader
+              title={t('dashboard.storageAlerts')}
+              icon={storageAlertItems.length > 0
+                ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                : <Package className="w-4 h-4" />
+              }
+              action={
+                <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            />
+            {storageAlertItems.length > 0 ? (
+              <ul className="space-y-2">
+                {storageAlertItems.map((item: StorageItem) => {
+                  const todayStr = new Date().toISOString().slice(0, 10)
+                  const expired  = item.expiryDate != null && item.expiryDate < todayStr
+                  const lowStock = item.minQuantity != null && item.quantity < item.minQuantity
+                  const colorClass = (expired || lowStock)
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                  return (
+                    <li
+                      key={item.id}
+                      onClick={() => navigate('/storage')}
+                      className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+                    >
+                      {lowStock
+                        ? <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                        : <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      }
+                      <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {storageAreaMap.get(item.areaId) ?? ''}
+                      </span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
+                        {lowStock
+                          ? `${item.quantity} / ${item.minQuantity} ${item.unit}`
+                          : item.expiryDate}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageAlerts')}</p>
+                <Link to="/storage" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
+                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* ── Row 2, right (col 3): Crew ── */}
+        <div className="md:col-start-3 md:row-start-2">
+          <Card className="h-full">
+            <CardHeader
+              title={t('dashboard.crewOnBoard')}
+              icon={<Users className="w-4 h-4" />}
+              action={
+                <Link to="/crew" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.crew')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            />
+            {activeCrew && activeCrew.length > 0 ? (
+              <ul className="space-y-2">
+                {activeCrew.map(m => (
+                  <li key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700">
+                    <div>
+                      <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
+                      <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
+                    </div>
+                    <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
+                      {t(`crew.roles.${m.role}`)}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-center py-6">
+                <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">{t('crew.noCrewMembers')}</p>
+                <Link to="/crew" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+                  {t('crew.addMember')}
+                </Link>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* ── Row 3, left (col 1-2): Last log entry ── */}
+        <div className="md:col-span-2 md:row-start-3">
           {lastEntry ? (
             <Card className="h-full">
               <CardHeader
@@ -415,102 +530,12 @@ export function Dashboard() {
           )}
         </div>
 
-        {/* ── Row 2, right (col 3): Crew ── */}
-        <div className="md:col-start-3 md:row-start-2">
-          <Card className="h-full">
-            <CardHeader
-              title={t('dashboard.crewOnBoard')}
-              icon={<Users className="w-4 h-4" />}
-              action={
-                <Link to="/crew" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                  {t('nav.crew')} <ArrowRight className="w-3 h-3" />
-                </Link>
-              }
-            />
-            {activeCrew && activeCrew.length > 0 ? (
-              <ul className="space-y-2">
-                {activeCrew.map(m => (
-                  <li key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700">
-                    <div>
-                      <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
-                      <span className="text-xs text-gray-500 ml-2">{m.nationality}</span>
-                    </div>
-                    <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
-                      {t(`crew.roles.${m.role}`)}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="text-center py-6">
-                <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">{t('crew.noCrewMembers')}</p>
-                <Link to="/crew" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
-                  {t('crew.addMember')}
-                </Link>
-              </div>
-            )}
-          </Card>
+        {/* ── Row 3, right (col 3): Mini voyage track SVG ── */}
+        <div className="md:col-start-3 md:row-start-3">
+          <MiniTrackWidget entries={trackEntries ?? []} navigate={navigate} t={t} isDark={isDark} />
         </div>
 
       </div>
-
-      {/* ── Storage Alerts ── */}
-      <Card>
-        <CardHeader
-          title={t('dashboard.storageAlerts')}
-          icon={storageAlertItems.length > 0
-            ? <AlertTriangle className="w-4 h-4 text-red-500" />
-            : <Package className="w-4 h-4" />
-          }
-          action={
-            <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-              {t('nav.storage')} <ArrowRight className="w-3 h-3" />
-            </Link>
-          }
-        />
-        {storageAlertItems.length > 0 ? (
-          <ul className="space-y-2">
-            {storageAlertItems.map((item: StorageItem) => {
-              const todayStr = new Date().toISOString().slice(0, 10)
-              const expired  = item.expiryDate != null && item.expiryDate < todayStr
-              const lowStock = item.minQuantity != null && item.quantity < item.minQuantity
-              const colorClass = (expired || lowStock)
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-              return (
-                <li
-                  key={item.id}
-                  onClick={() => navigate('/storage')}
-                  className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
-                >
-                  {lowStock
-                    ? <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                    : <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                  }
-                  <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
-                  <span className="text-xs text-gray-400 hidden sm:inline">
-                    {storageAreaMap.get(item.areaId) ?? ''}
-                  </span>
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
-                    {lowStock
-                      ? `${item.quantity} / ${item.minQuantity} ${item.unit}`
-                      : item.expiryDate}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
-            <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageAlerts')}</p>
-            <Link to="/storage" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
-              {t('nav.storage')} <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        )}
-      </Card>
 
       {/* Recent entries list */}
       {recentEntries && recentEntries.length > 0 && (
@@ -619,6 +644,221 @@ export function Dashboard() {
           </div>
         </Card>
       )}
+    </div>
+  )
+}
+
+// ── Helpers for MiniTrackWidget (Globe) ───────────────────────────────────────
+
+function coordToDecimal(c: Coordinate): number {
+  const d = c.degrees + c.minutes / 60
+  return c.direction === 'S' || c.direction === 'W' ? -d : d
+}
+
+interface MiniTrackProps {
+  entries: LogEntry[]
+  navigate: (path: string) => void
+  t: (key: string) => string
+  isDark: boolean
+}
+
+function MiniTrackWidget({ entries, navigate, t, isDark }: MiniTrackProps) {
+  const valid = useMemo(() =>
+    entries.filter(e => e.latitude?.degrees != null && e.longitude?.degrees != null),
+    [entries]
+  )
+
+  const emptyState = (
+    <div className="h-full cursor-pointer" onClick={() => navigate('/map')}>
+      <Card className="h-full hover:shadow-md transition-shadow">
+        <CardHeader
+          title={t('nav.map')}
+          icon={<Navigation className="w-4 h-4" />}
+          action={
+            <Link to="/map" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              onClick={e => e.stopPropagation()}>
+              {t('nav.map')} <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        />
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Navigation className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+          <p className="text-sm text-gray-500">{t('map.noData')}</p>
+        </div>
+      </Card>
+    </div>
+  )
+  if (valid.length < 2) return emptyState
+
+  const toRad = (d: number) => d * Math.PI / 180
+
+  // Convert coordinates to radians
+  const pts = valid.map(e => ({
+    latR: toRad(coordToDecimal(e.latitude)),
+    lonR: toRad(coordToDecimal(e.longitude)),
+    passageId: e.passageId,
+  }))
+
+  // Globe center = centroid of all points
+  const lat0 = pts.reduce((s, p) => s + p.latR, 0) / pts.length
+  const lon0 = pts.reduce((s, p) => s + p.lonR, 0) / pts.length
+  const sinLat0 = Math.sin(lat0), cosLat0 = Math.cos(lat0)
+
+  const R = 80, CX = 100, CY = 100
+
+  // Orthographic projection — returns [x, y, visible]
+  const project = (latR: number, lonR: number): [number, number, boolean] => {
+    const dLon = lonR - lon0
+    const sinLat = Math.sin(latR), cosLat = Math.cos(latR)
+    const dot = sinLat0 * sinLat + cosLat0 * cosLat * Math.cos(dLon)
+    const x = CX + R * cosLat * Math.sin(dLon)
+    const y = CY - R * (cosLat0 * sinLat - sinLat0 * cosLat * Math.cos(dLon))
+    return [x, y, dot >= 0]
+  }
+
+  // Build grid polylines, splitting at the horizon (invisible → visible transitions)
+  const buildPolylines = (pointGetter: (i: number) => [number, number, boolean], steps: number) => {
+    const result: string[] = []
+    let seg: string[] = []
+    for (let i = 0; i <= steps; i++) {
+      const [x, y, vis] = pointGetter(i)
+      if (vis) {
+        seg.push(`${x.toFixed(1)},${y.toFixed(1)}`)
+      } else {
+        if (seg.length > 1) result.push(seg.join(' '))
+        seg = []
+      }
+    }
+    if (seg.length > 1) result.push(seg.join(' '))
+    return result
+  }
+
+  const gridPolylines: string[] = []
+  // Parallels: every 30°
+  for (const latDeg of [-60, -30, 0, 30, 60]) {
+    buildPolylines(i => project(toRad(latDeg), toRad(-180 + i * 3)), 120)
+      .forEach(p => gridPolylines.push(p))
+  }
+  // Meridians: every 30°
+  for (let lonDeg = -180; lonDeg < 180; lonDeg += 30) {
+    buildPolylines(i => project(toRad(-90 + i * 1.5), toRad(lonDeg)), 120)
+      .forEach(p => gridPolylines.push(p))
+  }
+
+  // Route polylines — grouped by passage, split at the horizon
+  const passageMap = new Map<number, typeof pts>()
+  pts.forEach(p => {
+    if (!passageMap.has(p.passageId)) passageMap.set(p.passageId, [])
+    passageMap.get(p.passageId)!.push(p)
+  })
+  const routePolylines: string[] = []
+  passageMap.forEach(ppts => {
+    let seg: string[] = []
+    ppts.forEach(p => {
+      const [x, y, vis] = project(p.latR, p.lonR)
+      if (vis) {
+        seg.push(`${x.toFixed(1)},${y.toFixed(1)}`)
+      } else {
+        if (seg.length > 1) routePolylines.push(seg.join(' '))
+        seg = []
+      }
+    })
+    if (seg.length > 1) routePolylines.push(seg.join(' '))
+  })
+
+  // Visible dots
+  const dots = pts.map((p, i) => {
+    const [x, y, vis] = project(p.latR, p.lonR)
+    return vis ? { x, y, key: i } : null
+  }).filter((d): d is { x: number; y: number; key: number } => d !== null)
+
+  const last = pts[pts.length - 1]
+  const [lastX, lastY, lastVis] = project(last.latR, last.lonR)
+
+  const c = isDark
+    ? { inner: '#1a3a5c', outer: '#060f1e', grid: '#3b82f6', gridOp: 0.3, route: '#60a5fa', dot: '#93c5fd', last: '#10b981', rim: '#334155', text: '#6b7280' }
+    : { inner: '#4a90d9', outer: '#1a3a6b', grid: '#bfdbfe', gridOp: 0.5, route: '#ffffff', dot: '#dbeafe', last: '#10b981', rim: '#2563eb', text: '#6b7280' }
+
+  return (
+    <div className="h-full cursor-pointer" onClick={() => navigate('/map')}>
+      <Card className="h-full hover:shadow-md transition-shadow">
+        <CardHeader
+          title={t('nav.map')}
+          icon={<Navigation className="w-4 h-4" />}
+          action={
+            <Link to="/map" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              onClick={e => e.stopPropagation()}>
+              {t('nav.map')} <ArrowRight className="w-3 h-3" />
+            </Link>
+          }
+        />
+        <svg viewBox="0 0 200 210" className="w-full max-h-72 mx-auto block">
+          <defs>
+            <radialGradient id="globe-ocean" cx="35%" cy="28%" r="72%">
+              <stop offset="0%" stopColor={c.inner} />
+              <stop offset="100%" stopColor={c.outer} />
+            </radialGradient>
+            <radialGradient id="globe-sheen" cx="32%" cy="28%" r="60%">
+              <stop offset="0%" stopColor="white" stopOpacity={isDark ? 0.06 : 0.18} />
+              <stop offset="100%" stopColor="white" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="globe-shadow" cx="50%" cy="50%" r="50%">
+              <stop offset="80%" stopColor="transparent" />
+              <stop offset="100%" stopColor={isDark ? 'rgba(0,0,0,0.55)' : 'rgba(10,30,80,0.35)'} />
+            </radialGradient>
+            <clipPath id="globe-clip">
+              <circle cx={CX} cy={CY} r={R} />
+            </clipPath>
+          </defs>
+
+          {/* Globe base */}
+          <circle cx={CX} cy={CY} r={R} fill="url(#globe-ocean)" />
+
+          <g clipPath="url(#globe-clip)">
+            {/* Lat/lon grid */}
+            {gridPolylines.map((poly, i) => (
+              <polyline key={i} points={poly} fill="none"
+                stroke={c.grid} strokeWidth={0.6} opacity={c.gridOp} />
+            ))}
+
+            {/* Equator slightly bolder */}
+            {buildPolylines(i => project(0, toRad(-180 + i * 3)), 120).map((poly, i) => (
+              <polyline key={`eq${i}`} points={poly} fill="none"
+                stroke={c.grid} strokeWidth={1.0} opacity={c.gridOp * 1.5} />
+            ))}
+
+            {/* Route */}
+            {routePolylines.map((poly, i) => (
+              <polyline key={`r${i}`} points={poly} fill="none"
+                stroke={c.route} strokeWidth={2.5}
+                strokeLinejoin="round" strokeLinecap="round" opacity={0.95} />
+            ))}
+
+            {/* Entry dots */}
+            {dots.map(d => (
+              <circle key={d.key} cx={d.x} cy={d.y} r={1.8} fill={c.dot} opacity={0.85} />
+            ))}
+
+            {/* Last position */}
+            {lastVis && (
+              <circle cx={lastX} cy={lastY} r={5.5} fill={c.last} stroke="white" strokeWidth={1.5} />
+            )}
+
+            {/* Specular sheen for 3-D look */}
+            <circle cx={CX} cy={CY} r={R} fill="url(#globe-sheen)" />
+          </g>
+
+          {/* Rim shadow + outline */}
+          <circle cx={CX} cy={CY} r={R} fill="url(#globe-shadow)" />
+          <circle cx={CX} cy={CY} r={R} fill="none" stroke={c.rim} strokeWidth={1.5} />
+
+          {/* N marker */}
+          <text x={CX} y={CY - R - 5} textAnchor="middle" fill={c.text} fontSize={9} fontWeight="bold">N</text>
+
+          {/* Point count */}
+          <text x={CX} y={CY + R + 14} textAnchor="middle" fill={c.text} fontSize={9}>{valid.length} pts</text>
+        </svg>
+      </Card>
     </div>
   )
 }
