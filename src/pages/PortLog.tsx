@@ -79,12 +79,6 @@ function trendIcon(trend?: string): string {
   }
 }
 
-const MOORING_LABEL: Record<string, string> = {
-  anchored:         'Anker',
-  moored_marina:    'Hafen',
-  moored_buoy:      'Boje',
-  moored_alongside: 'Längs.',
-}
 
 function MooringIcon({ status }: { status?: MooringStatus }) {
   if (!status || status === 'underway') return null
@@ -459,7 +453,7 @@ function PassageCard({ passage, onEdit, onView, onDelete, onAddEntry, onEditEntr
                             <div className="flex items-center gap-1 text-teal-600 dark:text-teal-400">
                               <MooringIcon status={entry.mooringStatus} />
                               <span className="text-[10px] font-semibold leading-none">
-                                {MOORING_LABEL[entry.mooringStatus]}
+                                {t(`logEntry.mooringStatuses.${entry.mooringStatus}`)}
                               </span>
                             </div>
                           ) : (
@@ -775,11 +769,11 @@ export function PortLog() {
     }
   }
 
-  // Determine which passage card should be open by default
-  // Bug fix: exclude locked passages from auto-open (a locked active passage stays closed on reload)
-  const today = new Date().toISOString().split('T')[0]
-  const firstActiveId = passages?.find(p => !p.locked && p.departureDate <= today && today <= p.arrivalDate)?.id
-  const defaultOpenId = highlightId ?? firstActiveId ?? filteredPassages[0]?.id
+  // Determine which passage card should be open by default.
+  // Open the most recent passage only if it is not locked/archived.
+  // If all passages are locked, collapse everything.
+  const mostRecentPassage = filteredPassages[0]
+  const defaultOpenId = highlightId ?? (mostRecentPassage && !mostRecentPassage.locked ? mostRecentPassage.id : undefined)
 
   return (
     <div className="space-y-4">

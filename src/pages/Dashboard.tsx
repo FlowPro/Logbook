@@ -286,16 +286,17 @@ export function Dashboard() {
 
   // Barograph data: entries from last baroHours with pressure readings
   const baroEntries = useLiveQuery(async () => {
-    const cutoff = new Date()
-    cutoff.setHours(cutoff.getHours() - baroHours)
+    const now = new Date()
+    const cutoff = new Date(now.getTime() - baroHours * 60 * 60 * 1000)
     const cutoffStr = cutoff.toISOString().slice(0, 10)
     const cutoffMs = cutoff.getTime()
+    const nowMs = now.getTime()
     const all = await db.logEntries.where('date').aboveOrEqual(cutoffStr).toArray()
     return all
       .filter(e => {
         if (!e.baroPressureHPa) return false
         const ms = new Date(`${e.date}T${e.time}:00Z`).getTime()
-        return ms >= cutoffMs
+        return ms >= cutoffMs && ms <= nowMs
       })
       .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
       .map(e => ({ t: e.time, hPa: e.baroPressureHPa }))

@@ -371,7 +371,7 @@ const de = {
       mooringStatuses: {
         underway: 'Unterwegs',
         anchored: 'Vor Anker',
-        moored_marina: 'Hafen (Steg)',
+        moored_marina: 'Hafen',
         moored_buoy: 'Boje',
         moored_alongside: 'Längsseits',
       },
