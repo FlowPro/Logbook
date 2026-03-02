@@ -61,7 +61,12 @@ function trendIcon(trend?: string): string {
 function MooringIcon({ status }: { status?: MooringStatus }) {
   if (!status || status === 'underway') return null
   const cls = 'w-3.5 h-3.5 text-teal-600 dark:text-teal-400 flex-shrink-0'
-  switch (status) {
+  // Normalize legacy pre-v1.10.0 keys stored in existing DBs
+  const key = (status as string) === 'marina'    ? 'moored_marina'
+    :          (status as string) === 'buoy'      ? 'moored_buoy'
+    :          (status as string) === 'alongside' ? 'moored_alongside'
+    : status
+  switch (key) {
     case 'anchored':         return <Anchor className={cls} />
     case 'moored_marina':    return <Building2 className={cls} />
     case 'moored_buoy':      return <CircleDot className={cls} />

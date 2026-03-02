@@ -24,15 +24,21 @@ function App() {
   useEffect(() => {
     initSettings().catch(console.error)
 
-    // On GitHub Pages: auto-load demo data if the database is empty
+    // On GitHub Pages: auto-load demo data if the database is empty or the
+    // demo data version is newer than what was last imported.
     if (import.meta.env.VITE_GH_PAGES) {
-      db.logEntries.count().then(count => {
-        if (count > 0) return
-        return fetch(`${import.meta.env.BASE_URL}demo-backup.json`)
-          .then(r => r.json())
-          .then(json => importAllData(JSON.stringify(json)))
-          .then(() => toast.success('Demo data loaded — explore the app!', { duration: 5000 }))
-      }).catch(console.error)
+      fetch(`${import.meta.env.BASE_URL}demo-backup.json`)
+        .then(r => r.json())
+        .then(async json => {
+          const jsonVersion  = json.demoVersion ?? 1
+          const storedVersion = parseInt(localStorage.getItem('demo-data-version') ?? '0', 10)
+          const count = await db.logEntries.count()
+          if (count > 0 && storedVersion >= jsonVersion) return
+          await importAllData(JSON.stringify(json))
+          localStorage.setItem('demo-data-version', String(jsonVersion))
+          toast.success('Demo data loaded — explore the app!', { duration: 5000 })
+        })
+        .catch(console.error)
     }
   }, [])
 
