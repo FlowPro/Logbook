@@ -177,19 +177,21 @@ export function Summary() {
       const key = e.mooringStatus ?? 'underway'
       counts[key] = (counts[key] ?? 0) + 1
     })
-    const MOORING_LABELS: Record<string, string> = {
-      underway: 'Unterwegs', anchored: 'Vor Anker',
-      moored_marina: 'Hafen', moored_buoy: 'Boje', moored_alongside: 'Längsseits',
-    }
     const MOORING_COLORS_MAP: Record<string, string> = {
       underway: '#3b82f6', anchored: '#14b8a6',
       moored_marina: '#0d9488', moored_buoy: '#0891b2', moored_alongside: '#0e7490',
     }
+    const total = Object.values(counts).reduce((s, v) => s + v, 0)
     return Object.entries(counts)
       .filter(([, v]) => v > 0)
-      .map(([key, value]) => ({ name: MOORING_LABELS[key] ?? key, value, color: MOORING_COLORS_MAP[key] ?? '#94a3b8' }))
+      .map(([key, value]) => ({
+        name: t(`logEntry.mooringStatuses.${key}`, { defaultValue: key }),
+        value,
+        color: MOORING_COLORS_MAP[key] ?? '#94a3b8',
+        pct: total > 0 ? Math.round(value / total * 100) : 0,
+      }))
   })()
-  const hasMooringData = mooringDistData.length > 1 || (mooringDistData.length === 1 && mooringDistData[0].name !== 'Unterwegs')
+  const hasMooringData = mooringDistData.length > 1 || (mooringDistData.length === 1 && mooringDistData[0].name !== t('logEntry.mooringStatuses.underway'))
 
   // Temperature trend (only if data exists)
   const tempData = entries?.filter(e => e.temperature != null)
@@ -438,14 +440,19 @@ export function Summary() {
           <Card>
             <CardHeader title="Liegestatus" icon={<Anchor className="w-4 h-4" />} />
             {mooringDistData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
-                  <Pie data={mooringDistData} cx="50%" cy="48%" innerRadius={52} outerRadius={78} dataKey="value"
-                    label={({ percent }) => percent > 0.04 ? `${(percent * 100).toFixed(0)}%` : ''} labelLine={false}>
+                  <Pie data={mooringDistData} cx="50%" cy="44%" innerRadius={52} outerRadius={75} dataKey="value" labelLine={false}>
                     {mooringDistData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
                   <Tooltip formatter={(v) => [`${v} Einträge`]} />
-                  <Legend />
+                  <Legend
+                    wrapperStyle={{ fontSize: 12 }}
+                    formatter={(name, entry) => {
+                      const d = (entry.payload as unknown) as { pct: number }
+                      return `${name} ${d.pct}%`
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
