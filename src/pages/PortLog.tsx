@@ -460,29 +460,37 @@ function PassageCard({ passage, onEdit, onView, onDelete, onAddEntry, onEditEntr
                                 {t(`logEntry.mooringStatuses.${entry.mooringStatus}`)}
                               </span>
                             </div>
-                          ) : (
-                            <>
-                              {entry.engineOn && (
-                                <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 leading-none">
-                                  <Zap className="w-2.5 h-2.5" />Motor
-                                </span>
-                              )}
-                              {(entry.mainsailState || entry.genoa || entry.staysail || entry.headsail || entry.lightSail) ? (
-                                <SailDiagram
-                                  mainsailState={entry.mainsailState}
-                                  genoa={entry.genoa}
-                                  staysail={entry.staysail}
-                                  headsail={entry.headsail}
-                                  lightSail={entry.lightSail}
-                                  size={32}
-                                />
-                              ) : entry.sailConfig ? (
-                                <span className="text-xs text-gray-400">{entry.sailConfig}</span>
-                              ) : (
-                                <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
-                              )}
-                            </>
-                          )}
+                          ) : (() => {
+                              const hasSails =
+                                (entry.mainsailState && entry.mainsailState !== 'none') ||
+                                (entry.genoa        && entry.genoa        !== 'none') ||
+                                (entry.staysail     && entry.staysail     !== 'none') ||
+                                (entry.headsail     && entry.headsail     !== 'none') ||
+                                (entry.lightSail    && entry.lightSail    !== 'none')
+                              return (
+                                <>
+                                  {entry.engineOn && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 leading-none">
+                                      <Zap className="w-2.5 h-2.5" />Motor
+                                    </span>
+                                  )}
+                                  {hasSails ? (
+                                    <SailDiagram
+                                      mainsailState={entry.mainsailState}
+                                      genoa={entry.genoa}
+                                      staysail={entry.staysail}
+                                      headsail={entry.headsail}
+                                      lightSail={entry.lightSail}
+                                      size={32}
+                                    />
+                                  ) : entry.sailConfig ? (
+                                    <span className="text-xs text-gray-400">{entry.sailConfig}</span>
+                                  ) : !entry.engineOn ? (
+                                    <span className="text-xs text-gray-300 dark:text-gray-600">—</span>
+                                  ) : null}
+                                </>
+                              )
+                            })()}
                         </div>
                       </td>
                       <td className="px-3 py-2 text-center max-md:hidden">
