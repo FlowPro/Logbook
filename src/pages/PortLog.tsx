@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import React from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -580,8 +580,21 @@ function StatPill({ icon, label, value }: { icon: React.ReactNode; label: string
 export function PortLog() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const highlightId = searchParams.get('passage') ? parseInt(searchParams.get('passage')!) : null
+
+  // Auto-open log entry modal when navigated from Search with entryId state
+  const entryStateRef = useRef(location.state as { passageId?: number; entryId?: number } | null)
+  useEffect(() => {
+    const s = entryStateRef.current
+    if (s?.entryId && s?.passageId) {
+      setLogModal({ open: true, passageId: s.passageId, entryId: s.entryId })
+      entryStateRef.current = null
+      navigate('/ports', { replace: true, state: null })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [passageReadOnly, setPassageReadOnly] = useState(false)

@@ -7,6 +7,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.10.1] - 2026-03-02
+
+### Changed
+- **Suche** — Klick auf Logeintrag navigiert zu «Passagen & Logbuch» und öffnet den Eintrag dort (konsistentes Verhalten mit Wartung und Lager)
+- **VHF-Referenz** — Kanal 22A in neue Region «Nordamerika» verschoben (statt Karibik); Nordamerika-Sektion mit CH 16, 22A, 09, 68, 12
+
+---
+
 ## [1.10.0] - 2026-03-02
 
 ### Added

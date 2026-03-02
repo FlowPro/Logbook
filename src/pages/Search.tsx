@@ -6,8 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { db } from '../db/database'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
-import { Modal } from '../components/ui/Modal'
-import { LogEntryForm } from './LogEntryForm'
 import type { PassageEntry, LogEntry, MaintenanceEntry, StorageItem, StorageArea } from '../db/models'
 
 // ── Query parser ──────────────────────────────────────────────────────────────
@@ -109,7 +107,6 @@ export function Search() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [rawQuery, setRawQuery] = useState('')
-  const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number }>({ open: false })
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -278,7 +275,7 @@ export function Search() {
                 {filteredEntries.map(e => (
                   <button
                     key={e.id}
-                    onClick={() => setLogModal({ open: true, passageId: e.passageId, entryId: e.id })}
+                    onClick={() => navigate('/ports', { state: { passageId: e.passageId, entryId: e.id } })}
                     className="w-full text-left p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 transition-colors flex items-center justify-between gap-3"
                   >
                     <div className="min-w-0">
@@ -357,20 +354,6 @@ export function Search() {
         </div>
       )}
 
-      <Modal
-        isOpen={logModal.open}
-        onClose={() => setLogModal({ open: false })}
-        title={t('logEntry.editEntry')}
-        size="xl"
-      >
-        {logModal.open && logModal.passageId && (
-          <LogEntryForm
-            passageId={logModal.passageId}
-            entryId={logModal.entryId}
-            onClose={() => setLogModal({ open: false })}
-          />
-        )}
-      </Modal>
     </div>
   )
 }

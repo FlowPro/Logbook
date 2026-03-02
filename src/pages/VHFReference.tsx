@@ -78,13 +78,22 @@ const REGIONS: Region[] = [
     ],
   },
   {
+    name: { de: 'Nordamerika', en: 'North America' },
+    channels: [
+      { ch: '16',  location: { de: 'Wachhören allgemein', en: 'General watch' } },
+      { ch: '22A', location: { de: 'US Coast Guard Koordination (USA, USVI, Puerto Rico)', en: 'US Coast Guard coordination (USA, USVI, Puerto Rico)' } },
+      { ch: '09',  location: { de: 'Marinas allgemein (USA)', en: 'Marinas general (USA)' } },
+      { ch: '68',  location: { de: 'Yacht–Yacht allgemein (Ostküste USA)', en: 'Yacht–yacht general (US East Coast)' } },
+      { ch: '12',  location: { de: 'Häfen & Port control', en: 'Ports & port control' } },
+    ],
+  },
+  {
     name: { de: 'Karibik', en: 'Caribbean' },
     channels: [
       { ch: '16',  location: { de: 'Wachhören allgemein', en: 'General watch' } },
       { ch: '68',  location: { de: 'Yacht–Yacht allgemein (Karibik)', en: 'Yacht–yacht general (Caribbean)' } },
       { ch: '12',  location: { de: 'Häfen & Port control', en: 'Ports & port control' } },
       { ch: '09',  location: { de: 'Marinas allgemein', en: 'Marinas general' } },
-      { ch: '22A', location: { de: 'US Coast Guard (US-Gewässer, USVI, Puerto Rico)', en: 'US Coast Guard (US waters, USVI, Puerto Rico)' } },
     ],
   },
 ]
