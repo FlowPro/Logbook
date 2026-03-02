@@ -374,6 +374,10 @@ const de = {
         moored_marina: 'Hafen',
         moored_buoy: 'Boje',
         moored_alongside: 'Längsseits',
+        // legacy keys (pre-v1.10.0 demo data)
+        marina: 'Hafen',
+        buoy: 'Boje',
+        alongside: 'Längsseits',
       },
       watchOfficer: 'Wachoffizier',
       crewOnWatch: 'Crew auf Wache',

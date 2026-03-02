@@ -222,6 +222,10 @@ function PassageCard({ passage, onEdit, onView, onDelete, onAddEntry, onEditEntr
       cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [highlight])
+
+  useEffect(() => {
+    if (passage.locked) setOpen(false)
+  }, [passage.locked])
   const [showAll, setShowAll] = useState(false)
 
   // Load only this passage's entries (not all entries globally)

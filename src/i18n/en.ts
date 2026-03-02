@@ -377,6 +377,10 @@ const en = {
         moored_marina: 'Marina',
         moored_buoy: 'Mooring Buoy',
         moored_alongside: 'Alongside',
+        // legacy keys (pre-v1.10.0 demo data)
+        marina: 'Marina',
+        buoy: 'Mooring Buoy',
+        alongside: 'Alongside',
       },
       watchOfficer: 'Watch Officer',
       crewOnWatch: 'Crew on Watch',
