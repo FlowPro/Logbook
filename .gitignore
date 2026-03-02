@@ -43,3 +43,6 @@ test-results/
 
 # Claude Code – lokale IDE-Einstellungen
 .claude/
+
+# Private Backup-Snapshots (nicht deployen)
+*-demo-backup.json
