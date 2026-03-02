@@ -17,6 +17,7 @@ import { Safety } from './pages/Safety'
 import { Search } from './pages/Search'
 import { MapView } from './pages/MapView'
 import { Storage } from './pages/Storage'
+import { VHFReference } from './pages/VHFReference'
 import { db, initSettings, importAllData } from './db/database'
 
 function App() {
@@ -52,6 +53,7 @@ function App() {
           <Route path="search" element={<Search />} />
           <Route path="map" element={<MapView />} />
           <Route path="storage" element={<Storage />} />
+          <Route path="vhf" element={<VHFReference />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

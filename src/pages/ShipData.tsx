@@ -37,6 +37,7 @@ const schema = z.object({
   enginePowerKw: z.number().min(0),
   fuelCapacityL: z.number().min(0),
   fuelType: z.string(),
+  fuelConsumptionLH: z.number().min(0).optional(),
   waterCapacityL: z.number().min(0),
   insuranceCompany: z.string(),
   insurancePolicyNr: z.string(),
@@ -53,7 +54,7 @@ const DEFAULTS: FormData = {
   flag: '', homePort: '', registrationNumber: '', registrationCountry: '',
   mmsi: '', callSign: '', imoNumber: '',
   loaMeters: 0, beamMeters: 0, draftMeters: 0, displacementTons: 0, sailAreaSqm: 0,
-  engineType: '', enginePowerKw: 0, fuelCapacityL: 0, fuelType: 'Diesel', waterCapacityL: 0,
+  engineType: '', enginePowerKw: 0, fuelCapacityL: 0, fuelType: 'Diesel', fuelConsumptionLH: 0, waterCapacityL: 0,
   insuranceCompany: '', insurancePolicyNr: '', insuranceValidity: '', insuranceExpiry: '',
   contactEmail: '', contactPhone: '',
 }
@@ -85,6 +86,7 @@ export function ShipData({ embedded = false }: ShipDataProps) {
         displacementTons: ship.displacementTons, sailAreaSqm: ship.sailAreaSqm,
         engineType: ship.engineType, enginePowerKw: ship.enginePowerKw,
         fuelCapacityL: ship.fuelCapacityL, fuelType: ship.fuelType,
+        fuelConsumptionLH: ship.fuelConsumptionLH ?? 0,
         waterCapacityL: ship.waterCapacityL, insuranceCompany: ship.insuranceCompany,
         insurancePolicyNr: ship.insurancePolicyNr, insuranceValidity: ship.insuranceValidity,
         insuranceExpiry: ship.insuranceExpiry,
@@ -97,7 +99,7 @@ export function ShipData({ embedded = false }: ShipDataProps) {
   async function onSubmit(data: FormData) {
     setSaving(true)
     try {
-      await saveShip({ ...data, documents })
+      await saveShip({ ...data, fuelConsumptionLH: data.fuelConsumptionLH ?? 0, documents })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } finally {
@@ -192,8 +194,11 @@ export function ShipData({ embedded = false }: ShipDataProps) {
               <Input label={t('ship.engineType')} {...register('engineType')} />
               <Input label={t('ship.enginePower')} type="text" inputMode="decimal" {...register('enginePowerKw', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
             </div>
-            <div className={r3}>
+            <div className={r2}>
               <Input label={t('ship.fuelType')} {...register('fuelType')} />
+              <Input label={t('ship.fuelConsumption')} type="text" inputMode="decimal" {...register('fuelConsumptionLH', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
+            </div>
+            <div className={r2}>
               <Input label={t('ship.fuelCapacity')} type="text" inputMode="decimal" {...register('fuelCapacityL', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
               <Input label={t('ship.waterCapacity')} type="text" inputMode="decimal" {...register('waterCapacityL', { setValueAs: (v: string) => parseFloat(String(v).replace(',', '.')) || 0 })} />
             </div>

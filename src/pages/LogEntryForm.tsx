@@ -20,6 +20,7 @@ import { CoordinateInput } from '../components/ui/CoordinateInput'
 import { BeaufortPicker } from '../components/ui/BeaufortPicker'
 import { OktasPicker } from '../components/ui/OktasPicker'
 import { FileUpload } from '../components/ui/FileUpload'
+import { Modal } from '../components/ui/Modal'
 import { gpsToCoordinates, haversineDistance, coordToDecimal, decimalToCoord } from '../utils/geo'
 import { useSettings } from '../hooks/useSettings'
 import { useShip } from '../hooks/useShip'
@@ -266,6 +267,7 @@ export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntry
   const [gpsLoading, setGpsLoading] = useState(false)
   const [gpsError, setGpsError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showCopyConfirm, setShowCopyConfirm] = useState(false)
 
   const { settings } = useSettings()
   const { ship } = useShip()
@@ -303,7 +305,7 @@ export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntry
   }
 
 
-  const { control, register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { control, register, handleSubmit, reset, setValue, watch, formState: { errors, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: makeDefaults(passageId),
   })
@@ -352,6 +354,11 @@ export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntry
   }, [isEdit, existingEntry, setValue])
 
   function copyFromLast() {
+    if (isDirty) { setShowCopyConfirm(true); return }
+    doCopyFromLast()
+  }
+
+  function doCopyFromLast() {
     const src = lastEntryForPassage
     if (!src) return
     reset({
@@ -560,7 +567,7 @@ export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntry
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Position & Time */}
         <Section title={t('logEntry.sections.position')} icon={<MapPin className="w-4 h-4" />} disabled={readOnly}>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 [&>*]:min-w-0">
             <Input label={t('logEntry.date')} type="date" {...register('date')} required />
             <Input label={t('logEntry.time')} type="time" {...register('time')} required />
           </div>
@@ -932,6 +939,21 @@ export function LogEntryForm({ passageId, entryId, onClose, readOnly }: LogEntry
           )}
         </div>
       </form>
+
+      <Modal
+        isOpen={showCopyConfirm}
+        onClose={() => setShowCopyConfirm(false)}
+        title={t('logEntry.copyFromLast')}
+        size="sm"
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+          {t('logEntry.copyConfirmText')}
+        </p>
+        <div className="flex justify-end gap-3">
+          <Button variant="secondary" onClick={() => setShowCopyConfirm(false)}>{t('common.cancel')}</Button>
+          <Button onClick={() => { setShowCopyConfirm(false); doCopyFromLast() }}>{t('logEntry.copyConfirm')}</Button>
+        </div>
+      </Modal>
     </div>
   )
 }

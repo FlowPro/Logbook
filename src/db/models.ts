@@ -49,6 +49,7 @@ export interface Ship {
   enginePowerKw: number
   fuelCapacityL: number
   fuelType: string
+  fuelConsumptionLH?: number // fuel consumption at cruise speed (litres/hour)
   // Tanks
   waterCapacityL: number
   // Insurance
@@ -298,6 +299,8 @@ export interface AppSettings {
   nmeaDeviceProtocol?: 'tcp' | 'udp'
   // Map / Protomaps API
   protomapsApiKey?: string
+  // Dashboard layout (draggable tiles)
+  dashboardLayout?: { left: string[]; right: string[]; hidden: string[] }
   updatedAt: string
 }
 

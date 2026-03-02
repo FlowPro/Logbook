@@ -23,17 +23,28 @@ import {
   Package,
   Clock,
   Route,
+  GripVertical,
+  LayoutGrid,
+  TrendingDown,
+  RotateCcw,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import type { DropResult } from '@hello-pangea/dnd'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { MooringStatus, MaintenanceEntry, StorageItem, LogEntry, Coordinate } from '../db/models'
 import { SailDiagram } from '../components/ui/SailDiagram'
 import { OktasBadge } from '../components/ui/OktasPicker'
 import { db } from '../db/database'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { Modal } from '../components/ui/Modal'
+import { LogEntryForm } from './LogEntryForm'
 import { formatCoordinate } from '../utils/geo'
 import { Button } from '../components/ui/Button'
 import { fmtNum } from '../utils/units'
-import { getCountryCode, getCountryName } from '../components/ui/CountrySelect'
+import { getCountryCode } from '../components/ui/CountrySelect'
 import { getFlagUrl } from '../utils/flagUrl'
 import { useSettings } from '../hooks/useSettings'
 
@@ -71,10 +82,77 @@ function getDueInfo(dueDate: string, today: string): { label: string; colorClass
   return { label: `soon:${days}`, colorClass: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' }
 }
 
+type DashLayout = { left: string[]; right: string[]; hidden: string[] }
+
+const DEFAULT_LAYOUT: DashLayout = {
+  left:  ['maintenance', 'storage-expiry', 'last-entry'],
+  right: ['vessel', 'crew', 'mini-track'],
+  hidden: ['storage-stock', 'barograph'],
+}
+
+// Canonical column for each tile (used when showing a hidden tile)
+const TILE_DEFAULT_COL: Record<string, 'left' | 'right'> = {
+  maintenance:      'left',
+  'storage-expiry': 'left',
+  'storage-stock':  'left',
+  barograph:        'left',
+  'last-entry':     'left',
+  vessel:           'right',
+  crew:             'right',
+  'mini-track':     'right',
+}
+
+// ── DashTile: Draggable wrapper for each dashboard tile ────────────────────────
+interface DashTileProps {
+  id: string
+  index: number
+  editLayout: boolean
+  label: string
+  onHide: () => void
+  children: React.ReactNode
+}
+
+function DashTile({ id, index, editLayout, label, onHide, children }: DashTileProps) {
+  const { t } = useTranslation()
+  return (
+    <Draggable draggableId={id} index={index} isDragDisabled={!editLayout}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className={snapshot.isDragging ? 'shadow-xl ring-2 ring-blue-400 rounded-xl rotate-[0.5deg] z-50' : ''}
+        >
+          {editLayout && (
+            <div className="flex items-center bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-t-xl border-b-0">
+              <div
+                {...provided.dragHandleProps}
+                className="flex items-center gap-2 px-4 py-1.5 cursor-grab active:cursor-grabbing flex-1"
+              >
+                <GripVertical className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                <span className="text-xs text-blue-500 font-medium">{label}</span>
+              </div>
+              <button
+                onClick={onHide}
+                title={t('dashboard.hideTile')}
+                className="px-2.5 py-1.5 text-blue-300 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-tr-xl"
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+          <div className={editLayout ? '[&_.card]:rounded-t-none' : ''}>
+            {children}
+          </div>
+        </div>
+      )}
+    </Draggable>
+  )
+}
+
 export function Dashboard() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { settings } = useSettings()
+  const { settings, updateSettings } = useSettings()
 
   // Mirror AppLayout dark-mode logic so the globe SVG always gets the right colors
   const [prefersDark, setPrefersDark] = useState(() =>
@@ -90,8 +168,28 @@ export function Dashboard() {
   const isDark = themeMode === 'dark' || themeMode === 'night' || (themeMode === 'system' && prefersDark)
 
   const today = new Date().toISOString().slice(0, 10)
-  const in14days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
+  // ── Layout state ────────────────────────────────────────────
+  const [editLayout, setEditLayout] = useState(false)
+  const [layout, setLayout] = useState<DashLayout>(DEFAULT_LAYOUT)
+
+  useEffect(() => {
+    if (!settings?.dashboardLayout) return
+    const saved = settings.dashboardLayout
+    // Migrate old 'storage' tile ID → 'storage-expiry'
+    const migrate = (arr: string[]) => arr.map(id => id === 'storage' ? 'storage-expiry' : id)
+    setLayout({
+      left: migrate(saved.left),
+      right: migrate(saved.right),
+      hidden: saved.hidden ? migrate(saved.hidden) : [],
+    })
+  }, [settings?.dashboardLayout])
+
+  // ── Barograph state ─────────────────────────────────────────
+  const [baroHours, setBaroHours] = useState<24 | 48>(24)
+  const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number }>({ open: false })
+
+  // ── Data queries ────────────────────────────────────────────
   const lastEntry = useLiveQuery(() =>
     db.logEntries.orderBy('[date+time]').reverse().first()
   )
@@ -142,7 +240,6 @@ export function Dashboard() {
       })
       .toArray()
     tasks.sort((a, b) => {
-      // Overdue items first (date or engine hours), then by proximity
       const aDateOverdue = a.dueDate ? a.dueDate < cutoff.slice(0, 10) : false
       const bDateOverdue = b.dueDate ? b.dueDate < cutoff.slice(0, 10) : false
       if (aDateOverdue !== bDateOverdue) return aDateOverdue ? -1 : 1
@@ -157,29 +254,28 @@ export function Dashboard() {
   const maintenanceAlerts = alertsData.tasks
   const currentEngineHours = alertsData.maxEngineHours
 
-  const storageAlertItems = useLiveQuery(async () => {
-    const today = new Date().toISOString().slice(0, 10)
+  // Expiry alerts: expired or expiring within 30 days
+  const storageExpiryResult = useLiveQuery(async () => {
     const soon  = new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10)
     const items = await db.storageItems.toArray()
-    const priority = (i: StorageItem): number => {
-      if (i.expiryDate && i.expiryDate < today) return 0  // expired
-      if (i.expiryDate && i.expiryDate <= soon) return 1  // expiring soon
-      return 2                                             // low stock only
-    }
-    return items
-      .filter(i =>
-        (i.minQuantity != null && i.quantity < i.minQuantity) ||
-        (i.expiryDate  != null && i.expiryDate <= soon)
-      )
-      .sort((a, b) => {
-        const pa = priority(a), pb = priority(b)
-        if (pa !== pb) return pa - pb
-        // Within same priority: sort by expiryDate ascending (oldest/soonest first)
-        if (a.expiryDate && b.expiryDate) return a.expiryDate.localeCompare(b.expiryDate)
-        return 0
-      })
-      .slice(0, 5)
-  }) ?? []
+    const filtered = items
+      .filter(i => i.expiryDate != null && i.expiryDate <= soon)
+      .sort((a, b) => a.expiryDate!.localeCompare(b.expiryDate!))
+    return { items: filtered.slice(0, 5), total: filtered.length }
+  }) ?? { items: [], total: 0 }
+  const storageExpiryItems = storageExpiryResult.items
+  const storageExpiryTotal = storageExpiryResult.total
+
+  // Low-stock alerts: quantity below minimum
+  const storageStockResult = useLiveQuery(async () => {
+    const items = await db.storageItems.toArray()
+    const filtered = items
+      .filter(i => i.minQuantity != null && i.quantity < i.minQuantity)
+      .sort((a, b) => (a.quantity / a.minQuantity!) - (b.quantity / b.minQuantity!))
+    return { items: filtered.slice(0, 5), total: filtered.length }
+  }) ?? { items: [], total: 0 }
+  const storageStockItems = storageStockResult.items
+  const storageStockTotal = storageStockResult.total
 
   const storageAreaMap = useLiveQuery(async () => {
     const areas = await db.storageAreas.toArray()
@@ -188,6 +284,24 @@ export function Dashboard() {
     return m
   }) ?? new Map<number, string>()
 
+  // Barograph data: entries from last baroHours with pressure readings
+  const baroEntries = useLiveQuery(async () => {
+    const cutoff = new Date()
+    cutoff.setHours(cutoff.getHours() - baroHours)
+    const cutoffStr = cutoff.toISOString().slice(0, 10)
+    const cutoffMs = cutoff.getTime()
+    const all = await db.logEntries.where('date').aboveOrEqual(cutoffStr).toArray()
+    return all
+      .filter(e => {
+        if (!e.baroPressureHPa) return false
+        const ms = new Date(`${e.date}T${e.time}:00Z`).getTime()
+        return ms >= cutoffMs
+      })
+      .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
+      .map(e => ({ t: e.time, hPa: e.baroPressureHPa }))
+  }, [baroHours]) ?? []
+
+  // ── Helper renderers ────────────────────────────────────────
   function renderDueLabel(dueDate: string) {
     const { label, colorClass } = getDueInfo(dueDate, today)
     let text: string
@@ -226,75 +340,61 @@ export function Dashboard() {
     (task.nextServiceDueHours != null && currentEngineHours > 0 && currentEngineHours >= task.nextServiceDueHours)
   ).length
 
-  return (
-    <div className="space-y-6">
-      {/* Header bar */}
-      <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
-        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
-          {ship?.name ?? t('nav.dashboard')}
-        </span>
-        <span className="text-sm text-gray-400 dark:text-gray-500 hidden sm:inline flex-shrink-0">
-          {format(new Date(), 'EEEE, dd. MMMM yyyy')}
-        </span>
-        <div className="flex-1" />
-        <Link to="/ports">
-          <Button icon={<PlusCircle className="w-4 h-4" />}>
-            {t('logEntry.newEntry')}
-          </Button>
-        </Link>
-      </div>
+  // ── DnD handlers ────────────────────────────────────────────
+  const TILE_LABELS: Record<string, string> = {
+    maintenance:    t('dashboard.maintenanceAlerts'),
+    vessel:         t('dashboard.vesselStatus'),
+    'storage-expiry': t('dashboard.storageExpiry'),
+    'storage-stock':  t('dashboard.storageStock'),
+    crew:           t('dashboard.crewOnBoard'),
+    'last-entry':   t('dashboard.lastEntry'),
+    'mini-track':   t('nav.map'),
+    barograph:      t('dashboard.barograph'),
+  }
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Link to="/logbook" className="block">
-          <StatCard
-            icon={<BookOpen className="w-5 h-5" />}
-            label={t('dashboard.totalEntries')}
-            value={String(totalEntries ?? 0)}
-            color="blue"
-            clickable
-          />
-        </Link>
-        <Link to="/ports" className="block">
-          <StatCard
-            icon={<Route className="w-5 h-5" />}
-            label={t('dashboard.totalPassages')}
-            value={String(totalPassages ?? 0)}
-            color="purple"
-            clickable
-          />
-        </Link>
-        <StatCard
-          icon={<Navigation className="w-5 h-5" />}
-          label={t('dashboard.totalDistance')}
-          value={`${fmtNum(totalDistance ?? 0)} nm`}
-          color="green"
-        />
-        <Link to="/settings#ship" className="block">
-          <div className="card p-4 hover:shadow-md transition-shadow">
-            <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
-              <Anchor className="w-5 h-5" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
-              {ship?.name ?? '—'}
-              {ship?.flag && <img src={getFlagUrl(ship.flag)} alt={ship.flag} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-              {ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
-            </div>
-          </div>
-        </Link>
-      </div>
+  async function onDragEnd(result: DropResult) {
+    if (!result.destination) return
+    const newLayout: DashLayout = { left: [...layout.left], right: [...layout.right], hidden: [...layout.hidden] }
+    const srcCol = result.source.droppableId as 'left' | 'right'
+    const dstCol = result.destination.droppableId as 'left' | 'right'
+    const [moved] = newLayout[srcCol].splice(result.source.index, 1)
+    newLayout[dstCol].splice(result.destination.index, 0, moved)
+    setLayout(newLayout)
+    await updateSettings({ dashboardLayout: newLayout })
+  }
 
-      {/* Main content: 3-row × 3-col grid
-            Row 1 (auto):  Maintenance (col 1-2)  |  Bordstatus (col 3)
-            Row 2 (auto):  Storage     (col 1-2)  |  Crew       (col 3)
-            Row 3 (1fr):   Last Entry  (col 1-2)  |  Mini Track (col 3)  */}
-      <div className="grid md:grid-cols-3 gap-6">
+  async function hideTile(id: string) {
+    const newLayout: DashLayout = {
+      left:   layout.left.filter(t => t !== id),
+      right:  layout.right.filter(t => t !== id),
+      hidden: [...layout.hidden, id],
+    }
+    setLayout(newLayout)
+    await updateSettings({ dashboardLayout: newLayout })
+  }
 
-        {/* ── Row 1, left (col 1-2): Maintenance alerts ── */}
-        <div className="md:col-span-2 md:row-start-1">
-          <Card className="h-full">
+  async function showTile(id: string) {
+    const defaultCol = TILE_DEFAULT_COL[id] ?? 'left'
+    const newLayout: DashLayout = {
+      ...layout,
+      [defaultCol]: [...layout[defaultCol], id],
+      hidden: layout.hidden.filter(h => h !== id),
+    }
+    setLayout(newLayout)
+    await updateSettings({ dashboardLayout: newLayout })
+  }
+
+  async function resetLayout() {
+    setLayout(DEFAULT_LAYOUT)
+    await updateSettings({ dashboardLayout: DEFAULT_LAYOUT })
+  }
+
+  // ── Tile renderers ──────────────────────────────────────────
+  function renderTile(id: string): React.ReactNode {
+    switch (id) {
+      case 'maintenance':
+        return (
+          <Card className="h-[330px] flex flex-col">
             <CardHeader
               title={t('dashboard.maintenanceAlerts')}
               icon={overdueCount > 0
@@ -336,7 +436,7 @@ export function Dashboard() {
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noMaintenanceAlerts')}</p>
                 <Link to="/maintenance" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
@@ -345,17 +445,189 @@ export function Dashboard() {
               </div>
             )}
           </Card>
-        </div>
+        )
 
-        {/* ── Row 1, right (col 3): Bordstatus ── */}
-        <div className="md:col-start-3 md:row-start-1">
-          <Card className="h-full">
+      case 'storage-expiry': {
+        const todayStr = new Date().toISOString().slice(0, 10)
+        return (
+          <Card className="h-[330px] flex flex-col">
+            <CardHeader
+              title={t('dashboard.storageExpiry')}
+              icon={storageExpiryItems.length > 0
+                ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                : <Package className="w-4 h-4" />
+              }
+              action={
+                <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            />
+            {storageExpiryItems.length > 0 ? (
+              <>
+                <ul className="space-y-2">
+                  {storageExpiryItems.map((item: StorageItem) => {
+                    const expired = item.expiryDate != null && item.expiryDate < todayStr
+                    const colorClass = expired
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                    return (
+                      <li
+                        key={item.id}
+                        onClick={() => navigate('/storage', { state: { editItemId: item.id } })}
+                        className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+                      >
+                        <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                        <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                        <span className="text-xs text-gray-400 hidden sm:inline">
+                          {storageAreaMap?.get(item.areaId) ?? ''}
+                        </span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
+                          {item.expiryDate}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {storageExpiryTotal > 5 && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">+{storageExpiryTotal - 5} {t('nav.storage').toLowerCase()}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageExpiry')}</p>
+              </div>
+            )}
+          </Card>
+        )
+      }
+
+      case 'storage-stock':
+        return (
+          <Card className="h-[330px] flex flex-col">
+            <CardHeader
+              title={t('dashboard.storageStock')}
+              icon={storageStockItems.length > 0
+                ? <AlertTriangle className="w-4 h-4 text-red-500" />
+                : <Package className="w-4 h-4" />
+              }
+              action={
+                <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
+                </Link>
+              }
+            />
+            {storageStockItems.length > 0 ? (
+              <>
+                <ul className="space-y-2">
+                  {storageStockItems.map((item: StorageItem) => (
+                    <li
+                      key={item.id}
+                      onClick={() => navigate('/storage', { state: { editItemId: item.id } })}
+                      className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                      <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">
+                        {storageAreaMap?.get(item.areaId) ?? ''}
+                      </span>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                        {item.quantity} / {item.minQuantity} {item.unit}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {storageStockTotal > 5 && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">+{storageStockTotal - 5} {t('nav.storage').toLowerCase()}</p>
+                )}
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageStock')}</p>
+              </div>
+            )}
+          </Card>
+        )
+
+      case 'barograph':
+        return (
+          <Card className="h-[330px] flex flex-col">
+            <CardHeader
+              title={t('dashboard.barograph')}
+              icon={<TrendingDown className="w-4 h-4" />}
+              action={
+                <div className="flex gap-1">
+                  {([24, 48] as const).map(h => (
+                    <button
+                      key={h}
+                      onClick={() => setBaroHours(h)}
+                      className={`px-2 py-1 text-xs rounded-md font-medium transition-colors ${
+                        baroHours === h
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {h}h
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+            {baroEntries.length > 1 ? (
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={baroEntries}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="t" tick={{ fontSize: 9 }} />
+                    <YAxis
+                      tick={{ fontSize: 9 }}
+                      domain={['dataMin - 3', 'dataMax + 3']}
+                      tickFormatter={(v: number) => String(Math.round(v))}
+                      width={40}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => [`${Math.round(v)} hPa`, 'Luftdruck']}
+                    />
+                    <Line type="monotone" dataKey="hPa" stroke="#8b5cf6" dot={false} strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
+                <TrendingDown className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500">{t('dashboard.noBaroData', { hours: baroHours })}</p>
+              </div>
+            )}
+          </Card>
+        )
+
+      case 'vessel': {
+        // Fuel hours remaining calculation
+        const hasFuelRange = ship?.fuelConsumptionLH && ship.fuelConsumptionLH > 0
+          && lastEntryWithFuel?.fuelLevelL != null
+          && ship?.fuelCapacityL
+          && ship.fuelCapacityL > 0
+        const fuelL = hasFuelRange
+          ? (lastEntryWithFuel!.fuelLevelL! / 100) * ship!.fuelCapacityL
+          : 0
+        const rangeH = hasFuelRange ? fuelL / ship!.fuelConsumptionLH! : 0
+        const fuelPct = hasFuelRange ? (lastEntryWithFuel!.fuelLevelL ?? 100) : 100
+        const rangeColor = hasFuelRange
+          ? fuelPct <= 10 ? 'text-red-600 dark:text-red-400'
+          : fuelPct <= 20 ? 'text-orange-500 dark:text-orange-400'
+          : ''
+          : ''
+
+        return (
+          <Card className="h-[330px] flex flex-col">
             <CardHeader
               title={t('dashboard.vesselStatus')}
               icon={<Gauge className="w-4 h-4" />}
             />
             {currentEngineHours === 0 && lastEntryWithFuel == null && lastEntryWithWater == null ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <Gauge className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
                 <p className="text-sm text-gray-500">{t('dashboard.vesselStatusEmpty')}</p>
                 <Link to="/ports" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
@@ -364,15 +636,6 @@ export function Dashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-sm text-gray-500">
-                    <Zap className="w-3.5 h-3.5 flex-shrink-0" />
-                    {t('dashboard.engineHours')}
-                  </span>
-                  <span className="font-mono text-sm font-semibold">
-                    {currentEngineHours > 0 ? `${fmtNum(currentEngineHours, 1)} h` : '—'}
-                  </span>
-                </div>
                 <TankRow
                   icon={<Fuel className="w-3.5 h-3.5 flex-shrink-0" />}
                   label={t('logEntry.fuelLevel')}
@@ -385,73 +648,35 @@ export function Dashboard() {
                   pct={lastEntryWithWater?.waterLevelL ?? null}
                   capacity={ship?.waterCapacityL}
                 />
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                    <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+                    {t('dashboard.engineHours')}
+                  </span>
+                  <span className="font-mono text-sm font-semibold">
+                    {currentEngineHours > 0 ? `${fmtNum(currentEngineHours, 1)} h` : '—'}
+                  </span>
+                </div>
+                {hasFuelRange && (
+                  <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-700">
+                    <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                      <Navigation className="w-3.5 h-3.5 flex-shrink-0" />
+                      {t('dashboard.fuelRange')}
+                    </span>
+                    <span className={`font-mono text-sm font-semibold ${rangeColor}`}>
+                      ≈ {Math.round(rangeH)} h
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </Card>
-        </div>
+        )
+      }
 
-        {/* ── Row 2, left (col 1-2): Storage alerts ── */}
-        <div className="md:col-span-2 md:row-start-2">
-          <Card className="h-full">
-            <CardHeader
-              title={t('dashboard.storageAlerts')}
-              icon={storageAlertItems.length > 0
-                ? <AlertTriangle className="w-4 h-4 text-red-500" />
-                : <Package className="w-4 h-4" />
-              }
-              action={
-                <Link to="/storage" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
-                </Link>
-              }
-            />
-            {storageAlertItems.length > 0 ? (
-              <ul className="space-y-2">
-                {storageAlertItems.map((item: StorageItem) => {
-                  const todayStr = new Date().toISOString().slice(0, 10)
-                  const expired  = item.expiryDate != null && item.expiryDate < todayStr
-                  const lowStock = item.minQuantity != null && item.quantity < item.minQuantity
-                  const colorClass = (expired || lowStock)
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                  return (
-                    <li
-                      key={item.id}
-                      onClick={() => navigate('/storage', { state: { editItemId: item.id } })}
-                      className="flex items-center gap-3 py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors"
-                    >
-                      {lowStock
-                        ? <AlertTriangle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                        : <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                      }
-                      <span className="flex-1 text-sm font-medium truncate">{item.name}</span>
-                      <span className="text-xs text-gray-400 hidden sm:inline">
-                        {storageAreaMap?.get(item.areaId) ?? ''}
-                      </span>
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap ${colorClass}`}>
-                        {lowStock
-                          ? `${item.quantity} / ${item.minQuantity} ${item.unit}`
-                          : item.expiryDate}
-                      </span>
-                    </li>
-                  )
-                })}
-              </ul>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <CheckCircle className="w-8 h-8 text-green-500 mb-2" />
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('dashboard.noStorageAlerts')}</p>
-                <Link to="/storage" className="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1.5 inline-flex items-center gap-1">
-                  {t('nav.storage')} <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            )}
-          </Card>
-        </div>
-
-        {/* ── Row 2, right (col 3): Crew ── */}
-        <div className="md:col-start-3 md:row-start-2">
-          <Card className="h-full">
+      case 'crew':
+        return (
+          <Card className="h-[330px] flex flex-col">
             <CardHeader
               title={t('dashboard.crewOnBoard')}
               icon={<Users className="w-4 h-4" />}
@@ -462,24 +687,29 @@ export function Dashboard() {
               }
             />
             {activeCrew && activeCrew.length > 0 ? (
-              <ul className="space-y-2">
-                {activeCrew.map(m => (
-                  <li key={m.id} onClick={() => navigate('/crew', { state: { editMemberId: m.id } })} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors">
-                    <div>
-                      <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
-                      {m.nationality && (() => {
-                        const code = getCountryCode(m.nationality)
-                        return code ? <img src={getFlagUrl(code)} alt={code} className="w-4 h-3 object-cover rounded-sm flex-shrink-0 ml-2 inline-block align-middle" /> : null
-                      })()}
-                    </div>
-                    <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
-                      {t(`crew.roles.${m.role}`)}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <ul className="space-y-2">
+                  {activeCrew.slice(0, 5).map(m => (
+                    <li key={m.id} onClick={() => navigate('/crew', { state: { editMemberId: m.id } })} className="flex items-center justify-between py-1.5 border-b last:border-0 border-gray-100 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -mx-1 px-1 rounded transition-colors">
+                      <div>
+                        <span className="font-medium text-sm">{m.firstName} {m.lastName}</span>
+                        {m.nationality && (() => {
+                          const code = getCountryCode(m.nationality)
+                          return code ? <img src={getFlagUrl(code)} alt={code} className="w-4 h-3 object-cover rounded-sm flex-shrink-0 ml-2 inline-block align-middle" /> : null
+                        })()}
+                      </div>
+                      <Badge variant={m.role === 'skipper' ? 'info' : 'default'}>
+                        {t(`crew.roles.${m.role}`)}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+                {activeCrew.length > 5 && (
+                  <p className="text-xs text-gray-500 mt-2 text-center">+{activeCrew.length - 5} {t('nav.crew').toLowerCase()}</p>
+                )}
+              </>
             ) : (
-              <div className="text-center py-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center">
                 <Users className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                 <p className="text-sm text-gray-500">{t('crew.noCrewMembers')}</p>
                 <Link to="/crew" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
@@ -488,99 +718,259 @@ export function Dashboard() {
               </div>
             )}
           </Card>
-        </div>
+        )
 
-        {/* ── Row 3, left (col 1-2): Last log entry ── */}
-        <div className="md:col-span-2 md:row-start-3">
-          {lastEntry ? (
-            <Card className="h-full">
-              <CardHeader
-                title={t('dashboard.lastEntry')}
-                icon={<BookOpen className="w-4 h-4" />}
-                action={
-                  <Link to="/logbook" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-                    {t('nav.logbook')} <ArrowRight className="w-3 h-3" />
-                  </Link>
-                }
-              />
-              <div className="space-y-3">
-                {lastEntryPassage && (
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
-                    <span className="text-sm text-gray-500">{t('dashboard.activePassage')}</span>
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                      <span>{lastEntryPassage.departurePort}</span>
-                      {(() => { const c = getCountryCode(lastEntryPassage.departureCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
-                      <span className="text-gray-400 font-normal">→</span>
-                      <span>{lastEntryPassage.arrivalPort || '…'}</span>
-                      {lastEntryPassage.arrivalCountry && (() => { const c = getCountryCode(lastEntryPassage.arrivalCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.date')}</span>
-                  <span className="font-mono text-sm font-medium">
-                    {lastEntry.date} {lastEntry.time} UTC
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.sections.position')}</span>
-                  <span className="font-mono text-sm">
-                    {formatCoordinate(lastEntry.latitude)} {formatCoordinate(lastEntry.longitude)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.sog')}</span>
-                  <span className="font-mono text-sm font-medium">{lastEntry.speedOverGround != null ? `${lastEntry.speedOverGround.toFixed(1)} kn` : '—'}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.distanceSinceLast')}</span>
-                  <span className="font-mono text-sm">{lastEntry.distanceSinceLastEntry.toFixed(1)} nm</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.windBeaufort')}</span>
-                  <Badge variant="beaufort" beaufortForce={lastEntry.windBeaufort} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.baroPressure')}</span>
-                  <span className="font-mono text-sm">{lastEntry.baroPressureHPa} hPa</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">{t('logEntry.mooringStatus')}</span>
-                  <div className="flex items-center gap-1.5">
-                    <MooringIcon status={lastEntry.mooringStatus} />
-                    <span className="font-mono text-sm">
-                      {t(`logEntry.mooringStatuses.${lastEntry.mooringStatus ?? 'underway'}`)}
-                    </span>
-                  </div>
-                </div>
-                {lastEntry.notes && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 italic border-t pt-2 mt-2 border-gray-100 dark:border-gray-700">
-                    "{lastEntry.notes}"
-                  </p>
-                )}
-              </div>
-            </Card>
-          ) : (
-            <Card className="h-full">
-              <div className="text-center py-8">
-                <BookOpen className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500 dark:text-gray-400 mb-4">{t('dashboard.noEntries')}</p>
-                <Link to="/ports">
-                  <Button size="sm">{t('dashboard.startLogging')}</Button>
+      case 'last-entry':
+        return lastEntry ? (
+          <Card className="h-[400px] flex flex-col">
+            <CardHeader
+              title={t('dashboard.lastEntry')}
+              icon={<BookOpen className="w-4 h-4" />}
+              action={
+                <Link to="/logbook" className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                  {t('nav.logbook')} <ArrowRight className="w-3 h-3" />
                 </Link>
+              }
+            />
+            <div className="space-y-3 overflow-y-auto flex-1">
+              {lastEntryPassage && (
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                  <span className="text-sm text-gray-500">{t('dashboard.activePassage')}</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <span>{lastEntryPassage.departurePort}</span>
+                    {(() => { const c = getCountryCode(lastEntryPassage.departureCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
+                    <span className="text-gray-400 font-normal">→</span>
+                    <span>{lastEntryPassage.arrivalPort || '…'}</span>
+                    {lastEntryPassage.arrivalCountry && (() => { const c = getCountryCode(lastEntryPassage.arrivalCountry); return c ? <img src={getFlagUrl(c)} alt={c} className="w-5 h-3.5 object-cover rounded-sm flex-shrink-0" /> : null })()}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.date')}</span>
+                <span className="font-mono text-sm font-medium">
+                  {lastEntry.date} {lastEntry.time} UTC
+                </span>
               </div>
-            </Card>
-          )}
-        </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.sections.position')}</span>
+                <span className="font-mono text-sm">
+                  {formatCoordinate(lastEntry.latitude)} {formatCoordinate(lastEntry.longitude)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.sog')}</span>
+                <span className="font-mono text-sm font-medium">{lastEntry.speedOverGround != null ? `${lastEntry.speedOverGround.toFixed(1)} kn` : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.distanceSinceLast')}</span>
+                <span className="font-mono text-sm">{lastEntry.distanceSinceLastEntry.toFixed(1)} nm</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.windBeaufort')}</span>
+                <Badge variant="beaufort" beaufortForce={lastEntry.windBeaufort} />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.baroPressure')}</span>
+                <span className="font-mono text-sm">{lastEntry.baroPressureHPa} hPa</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{t('logEntry.mooringStatus')}</span>
+                <div className="flex items-center gap-1.5">
+                  <MooringIcon status={lastEntry.mooringStatus} />
+                  <span className="font-mono text-sm">
+                    {t(`logEntry.mooringStatuses.${lastEntry.mooringStatus ?? 'underway'}`)}
+                  </span>
+                </div>
+              </div>
+              {lastEntry.notes && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 italic border-t pt-2 mt-2 border-gray-100 dark:border-gray-700">
+                  "{lastEntry.notes}"
+                </p>
+              )}
+            </div>
+          </Card>
+        ) : (
+          <Card className="h-[400px] flex flex-col">
+            <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-500 dark:text-gray-400 mb-4">{t('dashboard.noEntries')}</p>
+              <Link to="/ports">
+                <Button size="sm">{t('dashboard.startLogging')}</Button>
+              </Link>
+            </div>
+          </Card>
+        )
 
-        {/* ── Row 3, right (col 3): Mini voyage track SVG ── */}
-        <div className="md:col-start-3 md:row-start-3">
-          <MiniTrackWidget entries={trackEntries ?? []} navigate={navigate} t={t} isDark={isDark} />
-        </div>
+      case 'mini-track':
+        return <MiniTrackWidget entries={trackEntries ?? []} navigate={navigate} t={t} isDark={isDark} />
 
+      default:
+        return null
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header bar */}
+      <div className="flex items-center gap-3 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">
+          {ship?.name ?? t('nav.dashboard')}
+        </span>
+        <span className="text-sm text-gray-400 dark:text-gray-500 hidden sm:inline flex-shrink-0">
+          {format(new Date(), 'EEEE, dd. MMMM yyyy')}
+        </span>
+        <div className="flex-1" />
+        <button
+          onClick={() => setEditLayout(v => !v)}
+          title={editLayout ? t('dashboard.doneEditing') : t('dashboard.editLayout')}
+          className={`p-2 rounded-lg transition-colors ${
+            editLayout
+              ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+              : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}
+        >
+          <LayoutGrid className="w-4 h-4" />
+        </button>
+        {editLayout && (
+          <button
+            onClick={resetLayout}
+            title={t('dashboard.resetLayout')}
+            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
+        <Link to="/ports">
+          <Button icon={<PlusCircle className="w-4 h-4" />}>
+            {t('logEntry.newEntry')}
+          </Button>
+        </Link>
       </div>
 
-      {/* Recent entries list */}
+      {/* Stats grid — fixed, not draggable */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Link to="/logbook" className="block">
+          <StatCard
+            icon={<BookOpen className="w-5 h-5" />}
+            label={t('dashboard.totalEntries')}
+            value={String(totalEntries ?? 0)}
+            color="blue"
+            clickable
+          />
+        </Link>
+        <Link to="/ports" className="block">
+          <StatCard
+            icon={<Route className="w-5 h-5" />}
+            label={t('dashboard.totalPassages')}
+            value={String(totalPassages ?? 0)}
+            color="purple"
+            clickable
+          />
+        </Link>
+        <StatCard
+          icon={<Navigation className="w-5 h-5" />}
+          label={t('dashboard.totalDistance')}
+          value={`${fmtNum(totalDistance ?? 0)} nm`}
+          color="green"
+        />
+        <Link to="/settings#ship" className="block">
+          <div className="card p-4 hover:shadow-md transition-shadow">
+            <div className="inline-flex p-2 rounded-lg mb-3 bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400">
+              <Anchor className="w-5 h-5" />
+            </div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate flex items-center gap-2">
+              {ship?.name ?? '—'}
+              {ship?.flag && <img src={getFlagUrl(ship.flag)} alt={ship.flag} className="w-6 h-4 object-cover rounded-sm flex-shrink-0" />}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+              {ship?.manufacturer && ship?.model ? `${ship.manufacturer} ${ship.model}` : t('nav.ship')}
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Edit mode hint */}
+      {editLayout && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl text-sm text-blue-600 dark:text-blue-400">
+          <GripVertical className="w-4 h-4 flex-shrink-0" />
+          <span>{t('dashboard.editLayoutHint')}</span>
+        </div>
+      )}
+
+      {/* Hidden tiles — shown only in edit mode */}
+      {editLayout && layout.hidden.length > 0 && (
+        <div className="border border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-4">
+          <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <EyeOff className="w-3.5 h-3.5" />
+            {t('dashboard.hiddenTiles')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {layout.hidden.map(id => (
+              <button
+                key={id}
+                onClick={() => showTile(id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                {TILE_LABELS[id] ?? id}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* DnD layout */}
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid md:grid-cols-3 gap-6 items-start">
+
+          {/* Left column (md:col-span-2) */}
+          <div className="md:col-span-2">
+            <Droppable droppableId="left">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`space-y-6 min-h-[60px] rounded-xl transition-colors ${
+                    snapshot.isDraggingOver && editLayout ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                  }`}
+                >
+                  {layout.left.map((id, i) => (
+                    <DashTile key={id} id={id} index={i} editLayout={editLayout} label={TILE_LABELS[id] ?? id} onHide={() => hideTile(id)}>
+                      {renderTile(id)}
+                    </DashTile>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </div>
+
+          {/* Right column (md:col-span-1) */}
+          <div>
+            <Droppable droppableId="right">
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className={`space-y-6 min-h-[60px] rounded-xl transition-colors ${
+                    snapshot.isDraggingOver && editLayout ? 'bg-blue-50/40 dark:bg-blue-950/20' : ''
+                  }`}
+                >
+                  {layout.right.map((id, i) => (
+                    <DashTile key={id} id={id} index={i} editLayout={editLayout} label={TILE_LABELS[id] ?? id} onHide={() => hideTile(id)}>
+                      {renderTile(id)}
+                    </DashTile>
+                  ))}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </div>
+
+        </div>
+      </DragDropContext>
+
+      {/* Recent entries table — fixed below DnD grid */}
       {recentEntries && recentEntries.length > 0 && (
         <Card padding={false}>
           <div className="px-4 md:px-6 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -609,7 +999,7 @@ export function Dashboard() {
                 {recentEntries.map(entry => (
                   <tr
                     key={entry.id}
-                    onClick={() => navigate(`/log/${entry.id}`)}
+                    onClick={() => setLogModal({ open: true, passageId: entry.passageId, entryId: entry.id })}
                     className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-mono text-xs"
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -687,6 +1077,21 @@ export function Dashboard() {
           </div>
         </Card>
       )}
+
+      <Modal
+        isOpen={logModal.open}
+        onClose={() => setLogModal({ open: false })}
+        title={t('logEntry.editEntry')}
+        size="xl"
+      >
+        {logModal.open && logModal.passageId && (
+          <LogEntryForm
+            passageId={logModal.passageId}
+            entryId={logModal.entryId}
+            onClose={() => setLogModal({ open: false })}
+          />
+        )}
+      </Modal>
     </div>
   )
 }
@@ -712,8 +1117,8 @@ function MiniTrackWidget({ entries, navigate, t, isDark }: MiniTrackProps) {
   )
 
   const emptyState = (
-    <div className="h-full cursor-pointer" onClick={() => navigate('/map')}>
-      <Card className="h-full hover:shadow-md transition-shadow">
+    <div className="cursor-pointer" onClick={() => navigate('/map')}>
+      <Card className="h-[400px] flex flex-col hover:shadow-md transition-shadow">
         <CardHeader
           title={t('nav.map')}
           icon={<Navigation className="w-4 h-4" />}
@@ -724,7 +1129,7 @@ function MiniTrackWidget({ entries, navigate, t, isDark }: MiniTrackProps) {
             </Link>
           }
         />
-        <div className="flex flex-col items-center justify-center py-8 text-center">
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
           <Navigation className="w-8 h-8 text-gray-300 dark:text-gray-600 mb-2" />
           <p className="text-sm text-gray-500">{t('map.noData')}</p>
         </div>
@@ -823,8 +1228,8 @@ function MiniTrackWidget({ entries, navigate, t, isDark }: MiniTrackProps) {
     : { inner: '#4a90d9', outer: '#1a3a6b', grid: '#bfdbfe', gridOp: 0.5, route: '#ffffff', dot: '#dbeafe', last: '#10b981', rim: '#2563eb', text: '#6b7280' }
 
   return (
-    <div className="h-full cursor-pointer" onClick={() => navigate('/map')}>
-      <Card className="h-full hover:shadow-md transition-shadow">
+    <div className="cursor-pointer" onClick={() => navigate('/map')}>
+      <Card className="h-[400px] flex flex-col hover:shadow-md transition-shadow">
         <CardHeader
           title={t('nav.map')}
           icon={<Navigation className="w-4 h-4" />}

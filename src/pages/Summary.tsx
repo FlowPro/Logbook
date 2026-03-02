@@ -131,13 +131,27 @@ export function Summary() {
     hPa: e.baroPressureHPa,
   })) ?? []
 
-  // Wind rose
-  const windRoseData = (() => {
-    const dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-    const counts = new Array(16).fill(0)
-    entries?.forEach(e => { if (e.windTrueDirection != null) counts[Math.round(e.windTrueDirection / 22.5) % 16]++ })
-    return dirs.map((dir, i) => ({ dir, count: counts[i] }))
-  })()
+  // Wind rose (split by Beaufort group)
+  const WIND_DIRS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+  const { windRoseData, windCount } = useMemo(() => {
+    const light    = new Array(16).fill(0) // Bft 1–3
+    const moderate = new Array(16).fill(0) // Bft 4–6
+    const strong   = new Array(16).fill(0) // Bft 7+
+    let count = 0
+    entries?.forEach(e => {
+      if (e.windTrueDirection == null) return
+      count++
+      const i = Math.round(e.windTrueDirection / 22.5) % 16
+      const bft = e.windBeaufort ?? 0
+      if (bft >= 7)      strong[i]++
+      else if (bft >= 4) moderate[i]++
+      else if (bft >= 1) light[i]++
+    })
+    return {
+      windRoseData: WIND_DIRS.map((dir, i) => ({ dir, light: light[i], moderate: moderate[i], strong: strong[i] })),
+      windCount: count,
+    }
+  }, [entries])
 
   // Beaufort distribution (0–12)
   const beaufortDist = (() => {
@@ -440,16 +454,21 @@ export function Summary() {
           </Card>
 
           {/* Row 5: Windrose – volle Breite */}
-          <Card className="md:col-span-2">
-            <CardHeader title={t('summary.windRose')} />
-            <ResponsiveContainer width="100%" height={240}>
-              <RadarChart data={windRoseData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="dir" tick={{ fontSize: 9 }} />
-                <Radar name="Wind" dataKey="count" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.4} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </Card>
+          {windCount >= 5 && (
+            <Card className="md:col-span-2">
+              <CardHeader title={t('summary.windRose')} subtitle={t('summary.windRoseSubtitle', { count: windCount })} icon={<Wind className="w-4 h-4" />} />
+              <ResponsiveContainer width="100%" height={420}>
+                <RadarChart cx="50%" cy="50%" outerRadius={150} data={windRoseData}>
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="dir" tick={{ fontSize: 10 }} />
+                  <Radar name={t('summary.windLight')}    dataKey="light"    stroke="#22c55e" fill="#22c55e" fillOpacity={0.45} />
+                  <Radar name={t('summary.windModerate')} dataKey="moderate" stroke="#f97316" fill="#f97316" fillOpacity={0.45} />
+                  <Radar name={t('summary.windStrong')}   dataKey="strong"   stroke="#ef4444" fill="#ef4444" fillOpacity={0.45} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
 
         </div>
       )}

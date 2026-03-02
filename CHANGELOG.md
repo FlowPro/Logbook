@@ -7,6 +7,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.10.0] - 2026-03-02
+
+### Added
+- **VHF-Referenz** (`/vhf`) — neue Offline-Seite mit internationalen Kanälen (16, 70, 13 …), Marina-Kanälen nach Region (Mittelmeer, Nordsee, Atlantik, Karibik) und Wettermeldungskanälen; Sidebar-Eintrag unter Quick Access
+- **Windrose** (Auswertung) — Beaufort-Schichtung: drei überlagerte Flächen (grün Bft 1–3, orange Bft 4–6, rot Bft 7+) mit Legende; Gesamtanzahl Windmessungen im Untertitel
+- **Bordstatus-Kachel** — Kraftstoff-Reichweite zeigt Motorstunden (statt nm/h); Berechnung ohne SOG-Query (nur Füllstand ÷ Verbrauch); Warnstufen orange ≤ 20 % / rot ≤ 10 %
+- **Logbucheintrag** — Bestätigungs-Modal bei «Aus letztem Eintrag kopieren» wenn Formular bereits Daten enthält
+
+### Changed
+- **Bordstatus-Kachel** — neue Reihenfolge: Kraftstoff → Wasser → Motorstunden → Reichweite
+- **Sidebar Quick Access** — Reihenfolge: Notfall → Sicherheit → VHF-Referenz
+- **Windrose** — Höhe 280 → 420 px, `outerRadius` 100 → 150; Beschriftung im Untertitel erklärt die Achsentiefe
+- **Übersicht «Letzte Einträge»** — Klick auf Eintrag öffnet Bearbeiten-Modal (statt Navigation auf nicht mehr existierende Route)
+
+### Fixed
+- **Logbucheintrag (iPad)** — Datum- und Zeitfeld überlappten auf iPadOS; behoben mit `[&>*]:min-w-0` auf dem Grid-Container
+
+---
+
 ## [1.9.1] - 2026-03-01
 
 ### Fixed

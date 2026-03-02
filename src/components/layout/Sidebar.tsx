@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   X,
   Package,
+  Radio,
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -82,8 +83,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   ]
 
   const emergencyItems = [
-    { to: '/safety', icon: ShieldCheck, label: t('nav.safety') },
     { to: '/emergency', icon: AlertTriangle, label: t('nav.emergency') },
+    { to: '/safety', icon: ShieldCheck, label: t('nav.safety') },
+    { to: '/vhf', icon: Radio, label: t('nav.vhf') },
   ]
 
   // Close sidebar only on mobile (< md = 768 px)

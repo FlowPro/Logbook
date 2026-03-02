@@ -601,11 +601,9 @@ export function PortLog() {
     let list = filterYear !== 'all'
       ? passages.filter(p => p.departureDate?.startsWith(filterYear))
       : passages
-    // In "all years" view, hide locked passages unless the user opts in —
-    // but only when there are also unlocked passages; if everything is locked show all.
+    // In "all years" view, hide locked passages unless the user opts in
     if (filterYear === 'all' && !showLocked) {
-      const unlocked = list.filter(p => !p.locked)
-      if (unlocked.length > 0) list = unlocked
+      list = list.filter(p => !p.locked)
     }
     return list
   }, [passages, filterYear, showLocked])
@@ -846,7 +844,7 @@ export function PortLog() {
           <div className="space-y-4">
             {filteredPassages.map(p => (
               <PassageCard
-                key={p.id}
+                key={`${p.id}-${filterYear}`}
                 passage={p}
                 onEdit={() => openEdit(p)}
                 onView={() => openView(p)}
@@ -871,7 +869,21 @@ export function PortLog() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500">{t('portLog.noPassagesYear', { year: filterYear })}</p>
+            {filterYear === 'all' && lockedCount > 0 && !showLocked ? (
+              <>
+                <Archive className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                <p className="text-gray-500 mb-3">{t('portLog.allArchived')}</p>
+                <button
+                  onClick={() => setShowLocked(true)}
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 mx-auto"
+                >
+                  <Eye className="w-4 h-4" />
+                  {t('portLog.showArchive', { count: lockedCount })}
+                </button>
+              </>
+            ) : (
+              <p className="text-gray-500">{t('portLog.noPassagesYear', { year: filterYear })}</p>
+            )}
           </div>
         )
       ) : (

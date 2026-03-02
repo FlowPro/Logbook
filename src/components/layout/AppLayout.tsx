@@ -27,6 +27,7 @@ const routeTitles: Record<string, string> = {
   '/safety': 'nav.safety',
   '/map': 'nav.map',
   '/storage': 'nav.storage',
+  '/vhf': 'nav.vhf',
 }
 
 export function AppLayout() {
