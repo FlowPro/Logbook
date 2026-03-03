@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Search as SearchIcon, MapPin, FileText, Wrench, X, ChevronRight, Package } from 'lucide-react'
+import { Search as SearchIcon, MapPin, FileText, Wrench, X, ChevronRight, Package, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { db } from '../db/database'
@@ -84,7 +84,7 @@ function matchesMaintenance(m: MaintenanceEntry, q: ParsedQuery): boolean {
 }
 
 function matchesStorage(item: StorageItem, area: StorageArea | undefined, q: ParsedQuery): boolean {
-  if (q.port || q.country || q.bft !== undefined) return false
+  if (q.port || q.country || q.bft !== undefined || q.date) return false
   const text = `${item.name} ${item.notes ?? ''} ${item.category} ${area?.name ?? ''}`.toLowerCase()
   if (q.free && !text.includes(q.free)) return false
   if (q.cat && !item.category.toLowerCase().includes(q.cat)) return false
@@ -92,6 +92,22 @@ function matchesStorage(item: StorageItem, area: StorageArea | undefined, q: Par
 }
 
 const MAX = 30
+
+// ── Search history (localStorage) ─────────────────────────────────────────────
+const HISTORY_KEY = 'search-history'
+const MAX_HISTORY = 8
+
+function loadHistory(): string[] {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') } catch { return [] }
+}
+
+function saveToHistory(query: string, prev: string[]): string[] {
+  const trimmed = query.trim()
+  if (!trimmed) return prev
+  const next = [trimmed, ...prev.filter(q => q !== trimmed)].slice(0, MAX_HISTORY)
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+  return next
+}
 
 const OPERATORS = [
   { op: 'port:Hamburg', desc: 'Hafen (Abfahrt oder Ankunft)' },
@@ -108,6 +124,7 @@ export function Search() {
   const navigate = useNavigate()
   const [rawQuery, setRawQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
+  const [history, setHistory] = useState<string[]>(() => loadHistory())
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 300 ms debounce — UI updates instantly, DB queries wait
@@ -173,6 +190,21 @@ export function Search() {
 
   const totalResults = filteredPassages.length + filteredEntries.length + filteredMaintenance.length + filteredStorage.length
 
+  // Save to history when a query produces results
+  useEffect(() => {
+    if (totalResults > 0 && debouncedQuery.trim()) {
+      setHistory(prev => saveToHistory(debouncedQuery.trim(), prev))
+    }
+  }, [debouncedQuery, totalResults])
+
+  function removeFromHistory(entry: string) {
+    setHistory(prev => {
+      const next = prev.filter(q => q !== entry)
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* Search bar */}
@@ -199,6 +231,42 @@ export function Search() {
           )}
         </div>
       </div>
+
+      {/* Recent searches (shown when idle) */}
+      {!hasQuery && history.length > 0 && (
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5" />
+              Zuletzt gesucht
+            </p>
+            <button
+              onClick={() => { localStorage.removeItem(HISTORY_KEY); setHistory([]) }}
+              className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              Alle löschen
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {history.map(entry => (
+              <div key={entry} className="flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-gray-100 dark:bg-gray-800 rounded-full text-sm">
+                <button
+                  onClick={() => setRawQuery(entry)}
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  {entry}
+                </button>
+                <button
+                  onClick={() => removeFromHistory(entry)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 ml-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Operator help (shown when idle) */}
       {!hasQuery && (

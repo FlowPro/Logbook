@@ -58,6 +58,7 @@ const CHECKLISTS: Record<'en' | 'de', Record<ChecklistType, ChecklistSection[]>>
           'Freshwater topped up',
           'Battery charged',
           'Bilge checked – empty',
+          'All hatches and openings closed',
           'Sea cocks closed',
           'Rig inspected',
           'Halyards and sheets checked',
@@ -140,6 +141,7 @@ const CHECKLISTS: Record<'en' | 'de', Record<ChecklistType, ChecklistSection[]>>
           'Caffeine available ☕',
           'Warm clothing ready',
           'Red night light in cockpit',
+          'All hatches and openings closed',
         ],
       },
       {
@@ -245,6 +247,7 @@ const CHECKLISTS: Record<'en' | 'de', Record<ChecklistType, ChecklistSection[]>>
           'Trinkwasser aufgefüllt',
           'Batterie geladen',
           'Bilge geprüft – leer',
+          'Alle Luken und Öffnungen geschlossen',
           'Seeventile geschlossen',
           'Rigg gecheckt',
           'Fallen und Schoten geprüft',
@@ -327,6 +330,7 @@ const CHECKLISTS: Record<'en' | 'de', Record<ChecklistType, ChecklistSection[]>>
           'Koffein verfügbar ☕',
           'Warme Kleidung bereit',
           'Rotes Nachtlicht am Cockpit',
+          'Alle Luken und Öffnungen geschlossen',
         ],
       },
       {

@@ -5,11 +5,21 @@ import { Protocol } from 'pmtiles'
 import { layers, namedFlavor } from '@protomaps/basemaps'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useTranslation } from 'react-i18next'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Wind, Layers, Download, X } from 'lucide-react'
 import { db } from '../db/database'
 import { useSettings } from '../hooks/useSettings'
+import { getCountryCode } from '../components/ui/CountrySelect'
 import type { Coordinate } from '../db/models'
+
+function countryFlag(name: string): string {
+  const code = getCountryCode(name)
+  if (!code || code.length !== 2) return ''
+  return String.fromCodePoint(
+    0x1F1E6 + code.charCodeAt(0) - 65,
+    0x1F1E6 + code.charCodeAt(1) - 65,
+  )
+}
 
 // ── Tile sources ───────────────────────────────────────────────────────────────
 
@@ -99,13 +109,6 @@ const MOORING_COLOR: Record<string, string> = {
   moored_buoy:      '#0891b2',
   moored_alongside: '#0e7490',
 }
-const MOORING_LABEL: Record<string, string> = {
-  underway:         'Unterwegs',
-  anchored:         'Vor Anker',
-  moored_marina:    'Hafen / Marina',
-  moored_buoy:      'Boje',
-  moored_alongside: 'Längsseits',
-}
 
 // ── Beaufort color expression ─────────────────────────────────────────────────
 const BFT_COLOR_EXPR = [
@@ -136,6 +139,11 @@ interface MapData {
 // ── Component ─────────────────────────────────────────────────────────────────
 export function MapView() {
   const { t } = useTranslation()
+  const tRef = useRef(t)
+  useEffect(() => { tRef.current = t }, [t])
+  const navigate = useNavigate()
+  const navigateRef = useRef(navigate)
+  useEffect(() => { navigateRef.current = navigate }, [navigate])
   const { settings } = useSettings()
   const location         = useLocation()
   const mapContainerRef  = useRef<HTMLDivElement>(null)
@@ -233,6 +241,23 @@ export function MapView() {
     )
     if (valid.length === 0) return null
 
+    // Build passage lookup and determine first/last entry per passage
+    // so mooring entries can show the relevant port name
+    const passageMap = new Map((passages ?? []).map(p => [p.id!, p]))
+    const passageFirstLast = new Map<number, { firstId: number; lastId: number }>()
+    {
+      const byPassage = new Map<number, { id: number; dt: string }[]>()
+      for (const e of entries) {
+        if (e.passageId == null || e.id == null) continue
+        if (!byPassage.has(e.passageId)) byPassage.set(e.passageId, [])
+        byPassage.get(e.passageId)!.push({ id: e.id, dt: `${e.date}${e.time}` })
+      }
+      for (const [pid, items] of byPassage) {
+        items.sort((a, b) => a.dt.localeCompare(b.dt))
+        passageFirstLast.set(pid, { firstId: items[0].id, lastId: items[items.length - 1].id })
+      }
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const routeFeatures: any[] = []
     for (let i = 0; i < valid.length - 1; i++) {
@@ -252,25 +277,43 @@ export function MapView() {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pointFeatures: any[] = valid.map(e => ({
-      type: 'Feature',
-      properties: {
-        passageId: e.passageId ?? null,
-        motor:   e.engineOn ? 1 : 0,
-        bft:     e.windBeaufort ?? 0,
-        windDir: e.windTrueDirection ?? null,
-        windSpd: e.windTrueSpeed ?? 0,
-        sog:     e.speedOverGround ?? 0,
-        date:    e.date,
-        time:    e.time,
-        mooring: e.mooringStatus ?? 'underway',
-        notes:   e.notes?.slice(0, 140) ?? '',
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: [toDecimal(e.longitude), toDecimal(e.latitude)],
-      },
-    }))
+    const pointFeatures: any[] = valid.map(e => {
+      const passage = e.passageId != null ? passageMap.get(e.passageId) : undefined
+      const fl      = e.passageId != null ? passageFirstLast.get(e.passageId) : undefined
+      let location    = ''
+      let locationFlag = ''
+      if (passage && fl) {
+        if (e.id === fl.firstId) {
+          location     = passage.departurePort
+          locationFlag = countryFlag(passage.departureCountry ?? '')
+        } else if (e.id === fl.lastId) {
+          location     = passage.arrivalPort
+          locationFlag = countryFlag(passage.arrivalCountry ?? '')
+        }
+      }
+      return {
+        type: 'Feature',
+        properties: {
+          passageId: e.passageId ?? null,
+          motor:    e.engineOn ? 1 : 0,
+          bft:      e.windBeaufort ?? 0,
+          windDir:  e.windTrueDirection ?? null,
+          windSpd:  e.windTrueSpeed ?? 0,
+          sog:      e.speedOverGround ?? 0,
+          date:     e.date,
+          time:     e.time,
+          mooring:  e.mooringStatus ?? 'underway',
+          entryId:  e.id ?? null,
+          notes:    e.notes?.slice(0, 140) ?? '',
+          location,
+          locationFlag,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [toDecimal(e.longitude), toDecimal(e.latitude)],
+        },
+      }
+    })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const windFeatures: any[] = valid
@@ -292,7 +335,7 @@ export function MapView() {
     ]
 
     return { routeFeatures, pointFeatures, windFeatures, bounds }
-  }, [entries])
+  }, [entries, passages])
 
   useEffect(() => { dataRef.current = geojson }, [geojson])
 
@@ -378,7 +421,12 @@ export function MapView() {
       paint: { 'text-color': BFT_COLOR_EXPR as any, 'text-halo-color': 'rgba(0,0,0,0.6)', 'text-halo-width': 1.5 },
     })
 
-    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: false, maxWidth: '268px' })
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, maxWidth: '268px' })
+
+    // Close popup on Esc
+    map.getContainer().addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'Escape') popup.remove()
+    })
 
     const showPopup = (e: maplibregl.MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
       const f = e.features?.[0]
@@ -386,29 +434,60 @@ export function MapView() {
       const p = f.properties as {
         date: string; time: string; sog: number; motor: number
         bft: number; windSpd: number; windDir: number | null
-        mooring: string; notes: string
+        mooring: string; notes: string; location: string; locationFlag: string
+        entryId: number | null; passageId: number | null
       }
       const isUnderway = p.mooring === 'underway'
-      const moorIcon   = MOORING_ICON[p.mooring]  ?? ''
-      const moorLabel  = MOORING_LABEL[p.mooring] ?? p.mooring
+      const moorIcon   = MOORING_ICON[p.mooring] ?? ''
+      const moorLabel  = tRef.current(`logEntry.mooringStatuses.${p.mooring}` as never)
       const windStr    = p.windDir != null
-        ? `${p.bft} Bft · ${p.windSpd.toFixed(1)} kn aus ${Math.round(p.windDir)}°`
+        ? `${p.bft} Bft · ${p.windSpd.toFixed(1)} kn · ${Math.round(p.windDir)}°`
         : `${p.bft} Bft · ${p.windSpd.toFixed(1)} kn`
 
-      const statusHtml = isUnderway
-        ? `<div style="color:#374151">${p.motor ? '⚙ Motor' : '⛵ Segel'} · SOG ${p.sog.toFixed(1)} kn</div>`
-        : `<div style="color:#0d9488">${moorIcon} ${moorLabel}</div>`
+      const row = (icon: string, text: string, color: string) =>
+        `<div style="display:table-row">
+          <span style="display:table-cell;padding-right:6px;color:${color};white-space:nowrap;vertical-align:middle">${icon}</span>
+          <span style="display:table-cell;color:${color};font-size:11px;white-space:nowrap;vertical-align:middle">${text}</span>
+        </div>`
 
+      const locationLine = p.location
+        ? `${p.locationFlag ? p.locationFlag + ' ' : ''}${p.location}`
+        : ''
+      const titleHtml = isUnderway
+        ? `<div style="font-weight:700;font-size:13px;color:#111827;margin-bottom:3px">${p.motor ? '⚙ Motor' : '⛵ Segel'}<span style="font-weight:400;color:#6b7280"> · SOG ${p.sog.toFixed(1)} kn</span></div>`
+        : `${locationLine
+            ? `<div style="font-weight:700;font-size:13px;color:#111827;margin-bottom:1px">${locationLine}</div>`
+            : ''
+          }<div style="color:#0d9488;font-size:12px;margin-bottom:3px">${moorIcon} ${moorLabel}</div>`
+
+      const canNav = p.entryId != null && p.passageId != null
       popup.setLngLat(e.lngLat).setHTML(`
-        <div style="font-size:12px;line-height:1.75;color:#111827;padding:2px 0">
-          <div style="font-weight:700;margin-bottom:4px;color:#111827">${p.date} · ${p.time} UTC</div>
-          ${statusHtml}
-          <div style="color:#d97706">💨 ${windStr}</div>
+        <div style="font-size:12px;line-height:1.5;color:#111827;padding:2px 0;min-width:160px">
+          ${titleHtml}
+          <div style="display:table;border-spacing:0 2px">
+            ${row('💨', windStr, '#b45309')}
+            ${row('🕐', `${p.date} · ${p.time} UTC`, '#9ca3af')}
+          </div>
           ${p.notes
-            ? `<div style="margin-top:5px;color:#6b7280;font-size:11px;border-top:1px solid #e5e7eb;padding-top:4px">${p.notes}</div>`
+            ? `<div style="margin-top:5px;color:#6b7280;font-size:11px;border-top:1px solid #e5e7eb;padding-top:4px;font-style:italic">${p.notes}</div>`
+            : ''}
+          ${canNav
+            ? `<div style="margin-top:6px;border-top:1px solid #e5e7eb;padding-top:5px">
+                <button data-nav-entry="${p.entryId}" data-nav-passage="${p.passageId}" style="font-size:11px;color:#2563eb;background:none;border:none;cursor:pointer;padding:0">
+                  → Zum Logbucheintrag
+                </button>
+               </div>`
             : ''}
         </div>
       `).addTo(map)
+
+      if (canNav) {
+        const btn = popup.getElement()?.querySelector('[data-nav-entry]') as HTMLButtonElement | null
+        btn?.addEventListener('click', () => {
+          popup.remove()
+          navigateRef.current('/ports', { state: { passageId: p.passageId, entryId: p.entryId } })
+        })
+      }
     }
 
     const CLICKABLE = ['entry-dots', 'mooring-dots'] as const
@@ -540,7 +619,7 @@ export function MapView() {
     const isUnderway = mooring === 'underway'
     const statusLine = isUnderway
       ? `${lastEntry.engineOn ? '⚙ Motor' : '⛵ Segel'} · SOG ${(lastEntry.speedOverGround ?? 0).toFixed(1)} kn`
-      : `⚓ ${MOORING_LABEL[mooring] ?? mooring}`
+      : `⚓ ${t(`logEntry.mooringStatuses.${mooring}` as never)}`
 
     const popup = new maplibregl.Popup({ offset: 14, closeButton: false, closeOnClick: true })
       .setHTML(`

@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { PDFDocument } from 'pdf-lib'
 import type { LogEntry, Ship, CrewMember, PassageEntry } from '../db/models'
 import { formatCoordinate } from './geo'
+import { getCountryName } from '../components/ui/CountrySelect'
 
 const PAGE_W = 210
 const PAGE_H = 297
@@ -291,9 +292,13 @@ export async function generateLogbookPDF(
     doc.setTextColor(0, 0, 0)
   }
 
-  const columns = ['Date/Time', 'Position', 'COG/CMG', 'SOG/STW', 'Dist.', 'Wind', 'Baro', 'Sails', 'Engine', 'Notes']
+  const columns = ['Date/Time', 'Position', 'COG/CMG', 'SOG/STW', 'Dist.', 'Wind', 'Baro', 'Sails', 'Engine', 'Watch', 'Notes']
 
   function entryRow(e: LogEntry) {
+    const watchParts = [
+      ...(e.watchOfficer ? [e.watchOfficer] : []),
+      ...(e.crewOnWatch ?? []).filter(c => c !== e.watchOfficer),
+    ]
     return [
       `${e.date}\n${e.time} UTC`,
       `${formatCoordinate(e.latitude)}\n${formatCoordinate(e.longitude)}`,
@@ -306,6 +311,7 @@ export async function generateLogbookPDF(
       e.mooringStatus && e.mooringStatus !== 'underway'
         ? MOORING_PDF[e.mooringStatus] + (e.engineOn ? '\nMotor' : '')
         : e.engineOn ? `On${e.engineHoursTotal != null ? `\n${e.engineHoursTotal.toFixed(0)} h` : ''}` : 'Sailing',
+      watchParts.length > 0 ? watchParts.join('\n') : '—',
       e.notes,
     ]
   }
@@ -314,7 +320,7 @@ export async function generateLogbookPDF(
     styles: { fontSize: 7, cellPadding: 2, lineWidth: 0.1, lineColor: [200, 200, 200] as [number, number, number] },
     headStyles: { fillColor: [220, 220, 220] as [number, number, number], textColor: [30, 30, 30] as [number, number, number], fontStyle: 'bold' as const, fontSize: 7 },
     alternateRowStyles: { fillColor: [248, 250, 252] as [number, number, number] },
-    columnStyles: { 9: { cellWidth: 45 } },
+    columnStyles: { 9: { cellWidth: 24 }, 10: { cellWidth: 40 } },
     margin: { top: 25, left: MARGIN, right: MARGIN },
     didDrawPage: (data: { pageNumber: number }) => {
       addFooter(doc, data.pageNumber, (doc as jsPDF & { internal: { getNumberOfPages(): number } }).internal.getNumberOfPages())
@@ -810,15 +816,11 @@ export async function generateCustomsDeclarationPDF(
 
   sectionTitle('VOYAGE DETAILS')
   if (passage) {
-    field('Port of Departure', `${passage.departurePort}, ${passage.departureCountry}`)
-    field('Date', passage.departureDate)
-    field('Port of Arrival', `${passage.arrivalPort}, ${passage.arrivalCountry}`)
-    field('Date', passage.arrivalDate)
+    field('Port of Departure', `${passage.departurePort}, ${getCountryName(passage.departureCountry)}   ·   ${passage.departureDate}`)
+    field('Port of Arrival',   `${passage.arrivalPort}, ${getCountryName(passage.arrivalCountry)}   ·   ${passage.arrivalDate}`)
   } else {
     field('Port of Departure', '')
-    field('Departure Date', '')
     field('Port of Arrival', '')
-    field('Arrival Date', '')
   }
   y += 5
 

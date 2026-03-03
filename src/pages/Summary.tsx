@@ -77,15 +77,18 @@ export function Summary() {
   }, [passages])
 
   const selectedPassage = passages?.find(p => p.id === selectedPassageId)
-  const { start, end } = period === 'passage' && selectedPassage
-    ? { start: selectedPassage.departureDate, end: selectedPassage.arrivalDate }
-    : period === 'season'
+  const { start, end } = period === 'season'
     ? { start: `${selectedSeasonYear}-01-01`, end: `${selectedSeasonYear}-12-31` }
+    : period === 'passage'
+    ? { start: '', end: '' } // unused when querying by passageId
     : getPeriodDates(period as Exclude<Period, 'passage' | 'season'>)
 
   const entries = useLiveQuery(async () => {
+    if (period === 'passage' && selectedPassageId != null)
+      return db.logEntries.where('passageId').equals(selectedPassageId).toArray()
+    if (!start || !end) return []
     return db.logEntries.where('date').between(start, end, true, true).toArray()
-  }, [start, end])
+  }, [period, selectedPassageId, start, end])
 
   // ── Core stats ────────────────────────────────────────────
   const stats = entries ? {

@@ -7,6 +7,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.11.0] - 2026-03-03
+
+### Added
+- **Suche** — Suchverlauf (localStorage, max 8 Einträge): zuletzt erfolgreiche Suchen werden als Chips angezeigt, einzeln oder alle löschbar
+- **Kartenansicht** — Popup zeigt Hafenname + Landesflagge für den ersten/letzten Eintrag einer Passage; «Zum Logbucheintrag»-Button navigiert direkt zum Eintrag; Esc schliesst Popup
+- **PDF-Logbuch** — Wachspalte («Watch») im Exporttabellenformat ergänzt
+
+### Fixed
+- **Wartung (Kanban)** — Karten können innerhalb einer Spalte vertikal neu angeordnet werden; bei spaltenübergreifendem Drag landet die Karte an der korrekten Position in der Zielspalte (nicht mehr an der ursprünglichen)
+- **Auswertung** — Passage-Filter nutzt DB-Index (`passageId`) statt Datum-Range für korrekte Eintragsabfragen
+- **Safari** — Datums-/Zeit-Inputs: kein natives Browser-Styling mehr, Text linksbündig
+- **Kartenansicht** — Maplibre Popup-Schliessen-Button durch Tailwind-Preflight nicht mehr unsichtbar
+
+### Changed
+- **PDF-Logbuch** — Abfahrts- und Ankunftsfelder kombinieren Ort, Landesname und Datum in einer Zeile
+- **VHF-Referenz** — Chevron-Icons statt Unicode-Dreiecke; Page-Header ergänzt
+- **Passagen** — Notizen und «Logeinträge»-Toggle auf gleicher Zeile
+
+---
+
 ## [1.10.1] - 2026-03-02
 
 ### Changed

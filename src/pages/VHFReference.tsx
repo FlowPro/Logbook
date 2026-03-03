@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Radio } from 'lucide-react'
+import { Radio, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -125,12 +125,18 @@ function chBadgeClass(h?: 'red' | 'amber' | 'blue') {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function VHFReference() {
-  const { i18n } = useTranslation()
+  const { i18n, t } = useTranslation()
   const lang = i18n.language.startsWith('de') ? 'de' : 'en'
   const [openRegion, setOpenRegion] = useState<number | null>(null)
 
   return (
     <div className="space-y-6">
+
+      {/* Page header */}
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
+        <Radio className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+        <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{t('nav.vhf')}</span>
+      </div>
 
       {/* International channels */}
       <Card padding={false}>
@@ -184,7 +190,10 @@ export function VHFReference() {
                 className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
                 <span className="font-medium text-gray-800 dark:text-gray-200">{region.name[lang]}</span>
-                <span className="text-gray-400 text-xs">{openRegion === idx ? '▲' : '▼'}</span>
+                {openRegion === idx
+                  ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                  : <ChevronDown className="w-4 h-4 text-gray-400" />}
+
               </button>
               {openRegion === idx && (
                 <table className="w-full text-sm border-t border-gray-100 dark:border-gray-700">

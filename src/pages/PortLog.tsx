@@ -395,19 +395,21 @@ function PassageCard({ passage, onEdit, onView, onDelete, onAddEntry, onEditEntr
           <StatPill icon={<Anchor className="w-3.5 h-3.5" />} label="Motor" value={`${stats.engineEntries} Eintr.`} />
         </div>
 
-        {/* Notes */}
-        {passage.notes && (
-          <p className="mt-2 text-sm text-gray-500 italic">"{passage.notes}"</p>
-        )}
-
-        {/* Toggle entries */}
-        <button
-          onClick={() => setOpen(v => !v)}
-          className="mt-3 flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          {entries.length} Logeinträge
-        </button>
+        {/* Notes + Toggle entries on same row */}
+        <div className="mt-2 flex items-center gap-2">
+          {passage.notes && (
+            <p className="flex-1 text-sm text-gray-500 italic truncate">"{passage.notes}"</p>
+          )}
+          <div className={passage.notes ? '' : 'ml-auto'}>
+            <button
+              onClick={() => setOpen(v => !v)}
+              className="flex items-center gap-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+            >
+              {entries.length} Logeinträge
+              {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Log entries list */}
@@ -600,8 +602,7 @@ export function PortLog() {
   const [passageReadOnly, setPassageReadOnly] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved,  setSaved]  = useState(false)
-  const [filterYear, setFilterYear] = useState<string>('all')
-  const [showLocked, setShowLocked] = useState(false)
+  const [filterYear, setFilterYear] = useState<string>('')
   const [lockingYear, setLockingYear] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'passage' | 'entry'; id: number; label: string } | null>(null)
   const [logModal, setLogModal] = useState<{ open: boolean; passageId?: number; entryId?: number; readOnly?: boolean }>({ open: false })
@@ -612,33 +613,31 @@ export function PortLog() {
   )
   const ship = useLiveQuery(() => db.ship.toCollection().first()) as Ship | undefined
 
-  // Derive unique years from passage departure dates
+  // Derive unique years from passage departure dates (newest first)
   const availableYears = useMemo(() => {
     if (!passages?.length) return []
     const years = new Set(passages.map(p => p.departureDate?.slice(0, 4)).filter(Boolean))
     return Array.from(years).sort((a, b) => b.localeCompare(a)) as string[]
   }, [passages])
 
-  // Filter passages by selected year — locked passages hidden in "all" view unless showLocked
-  const filteredPassages = useMemo(() => {
-    if (!passages) return []
-    let list = filterYear !== 'all'
-      ? passages.filter(p => p.departureDate?.startsWith(filterYear))
-      : passages
-    // In "all years" view, hide locked passages unless the user opts in
-    if (filterYear === 'all' && !showLocked) {
-      list = list.filter(p => !p.locked)
+  // Default to most recent year once passages are loaded
+  useEffect(() => {
+    if (filterYear === '' && availableYears.length > 0) {
+      setFilterYear(availableYears[0])
     }
-    return list
-  }, [passages, filterYear, showLocked])
+  }, [availableYears, filterYear])
 
-  const lockedCount = useMemo(() => passages?.filter(p => p.locked).length ?? 0, [passages])
+  // Filter passages by selected year
+  const filteredPassages = useMemo(() => {
+    if (!passages || !filterYear) return []
+    return passages.filter(p => p.departureDate?.startsWith(filterYear))
+  }, [passages, filterYear])
 
   // True when every passage in the selected year is locked
   const seasonFullyLocked = useMemo(() => {
-    if (filterYear === 'all' || !filteredPassages.length) return false
+    if (!filteredPassages.length) return false
     return filteredPassages.every(p => p.locked)
-  }, [filteredPassages, filterYear])
+  }, [filteredPassages])
 
   const { register, handleSubmit, watch, reset, control, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -782,18 +781,17 @@ export function PortLog() {
   }
 
   async function lockSeason() {
-    const year = filterYear === 'all' ? null : filterYear
-    if (!year) return
-    const tolock = (passages ?? []).filter(p => p.departureDate?.startsWith(year) && !p.locked)
+    if (!filterYear) return
+    const tolock = (passages ?? []).filter(p => p.departureDate?.startsWith(filterYear) && !p.locked)
     if (tolock.length === 0) {
-      toast(t('portLog.seasonsAllLocked', { year }))
+      toast(t('portLog.seasonsAllLocked', { year: filterYear }))
       return
     }
     setLockingYear(true)
     try {
       const now = new Date().toISOString()
       await Promise.all(tolock.map(p => db.passages.update(p.id!, { locked: true, updatedAt: now })))
-      toast.success(t('portLog.seasonLocked', { year }), { description: t('portLog.seasonLockDesc', { count: tolock.length }) })
+      toast.success(t('portLog.seasonLocked', { year: filterYear }), { description: t('portLog.seasonLockDesc', { count: tolock.length }) })
     } finally {
       setLockingYear(false)
     }
@@ -816,28 +814,13 @@ export function PortLog() {
           onChange={e => setFilterYear(e.target.value)}
           className="px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors cursor-pointer"
         >
-          <option value="all">{t('portLog.allYearsCount', { count: passages?.length ?? 0 })}</option>
           {availableYears.map(y => (
             <option key={y} value={y}>
               {y} ({(passages ?? []).filter(p => p.departureDate?.startsWith(y)).length})
             </option>
           ))}
         </select>
-        {filterYear === 'all' && lockedCount > 0 && (
-          <button
-            onClick={() => setShowLocked(v => !v)}
-            className={`flex items-center gap-1.5 text-sm px-2.5 py-1.5 rounded-lg border transition-colors ${
-              showLocked
-                ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-            title={showLocked ? t('portLog.hideArchive') : t('portLog.showArchive', { count: lockedCount })}
-          >
-            {showLocked ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            {showLocked ? t('portLog.hideArchive') : t('portLog.showArchive', { count: lockedCount })}
-          </button>
-        )}
-        {filterYear !== 'all' && (
+        {filterYear && (
           <button
             onClick={lockSeason}
             disabled={lockingYear || seasonFullyLocked}
@@ -852,11 +835,9 @@ export function PortLog() {
             {seasonFullyLocked ? t('portLog.seasonLockedBtn', { year: filterYear }) : t('portLog.lockSeasonBtn', { year: filterYear })}
           </button>
         )}
-        {filterYear !== 'all' && (
-          <span className="text-sm text-gray-400 flex-shrink-0">
-            {filteredPassages.length} {t('export.passages').toLowerCase()}
-          </span>
-        )}
+        <span className="text-sm text-gray-400 flex-shrink-0">
+          {filteredPassages.length} {t('export.passages').toLowerCase()}
+        </span>
         <div className="flex-1" />
         <Button icon={<PlusCircle className="w-4 h-4" />} onClick={openAdd}>
           {t('portLog.newPassage')}
@@ -893,21 +874,7 @@ export function PortLog() {
           </div>
         ) : (
           <div className="text-center py-12">
-            {filterYear === 'all' && lockedCount > 0 && !showLocked ? (
-              <>
-                <Archive className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500 mb-3">{t('portLog.allArchived')}</p>
-                <button
-                  onClick={() => setShowLocked(true)}
-                  className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 mx-auto"
-                >
-                  <Eye className="w-4 h-4" />
-                  {t('portLog.showArchive', { count: lockedCount })}
-                </button>
-              </>
-            ) : (
-              <p className="text-gray-500">{t('portLog.noPassagesYear', { year: filterYear })}</p>
-            )}
+            <p className="text-gray-500">{t('portLog.noPassagesYear', { year: filterYear })}</p>
           </div>
         )
       ) : (

@@ -55,7 +55,13 @@
            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
            disabled:opacity-50 disabled:cursor-not-allowed
            transition-colors duration-150;
+    /* Suppress iOS/Safari native date-time chrome so our styles apply uniformly */
+    -webkit-appearance: none;
+    appearance: none;
   }
+
+  /* Left-align the value text inside date/time inputs (Safari renders it centred by default) */
+  .input::-webkit-date-and-time-value { text-align: left; }
 
   .label {
     @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
@@ -142,6 +148,22 @@
 .btn-ghost:not([disabled]):hover  { background-color: #f3f4f6; border-color: #e5e7eb; color: #111827; } /* gray-100 / gray-200 / gray-900 */
 .btn-ghost:not([disabled]):active { background-color: #e5e7eb; color: #111827; }                         /* gray-200 */
 .dark .btn-ghost:not([disabled]):hover { background-color: #1f2937; border-color: #374151; color: #f3f4f6; } /* gray-800 / gray-700 */
+
+/* Restore maplibre popup close button that Tailwind preflight resets */
+.maplibregl-popup-close-button {
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  font-size: 18px;
+  line-height: 1;
+  color: #6b7280;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.maplibregl-popup-close-button:hover { color: #111827; background: #f3f4f6; }
 
 /* Press nudge for btn-* and all raw <button> elements */
 button:not([disabled]):active {

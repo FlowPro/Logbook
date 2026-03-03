@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react'
 import React from 'react'
 import { useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -255,32 +255,33 @@ interface ColumnProps {
 function KanbanColumn({ id, title, icon, headerCls, entries, catLabel, currentEngineHours, onAdd, onEdit, onDelete, onAdvance, onArchive }: ColumnProps) {
   const { t } = useTranslation()
   return (
-    <div className="flex flex-col">
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl ${headerCls}`}>
-        {icon}
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="ml-auto text-xs font-medium bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded-full">
-          {entries.length}
-        </span>
-        <button
-          onClick={onAdd}
-          className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 transition-colors"
-          title={t('maintenance.addTask')}
+    <Droppable droppableId={id}>
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+          className={`flex flex-col rounded-xl transition-colors ${
+            snapshot.isDraggingOver
+              ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-inset ring-blue-300 dark:ring-blue-700'
+              : 'bg-gray-50 dark:bg-gray-800/40'
+          }`}
         >
-          <PlusCircle className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      <Droppable droppableId={id}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className={`flex-1 space-y-2 p-2 rounded-b-xl min-h-[180px] transition-colors ${
-              snapshot.isDraggingOver
-                ? 'bg-blue-50 dark:bg-blue-950/30 ring-2 ring-inset ring-blue-300 dark:ring-blue-700'
-                : 'bg-gray-50 dark:bg-gray-800/40'
-            }`}
-          >
+          {/* Header is inside the Droppable so the entire column is a valid drop target */}
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-t-xl ${headerCls}`}>
+            {icon}
+            <span className="text-sm font-semibold">{title}</span>
+            <span className="ml-auto text-xs font-medium bg-white/40 dark:bg-black/20 px-1.5 py-0.5 rounded-full">
+              {entries.length}
+            </span>
+            <button
+              onClick={onAdd}
+              className="p-0.5 rounded hover:bg-white/50 dark:hover:bg-black/20 transition-colors"
+              title={t('maintenance.addTask')}
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="space-y-2 p-2 flex-1 min-h-[180px]">
             {entries.map((entry, i) => (
               <KanbanCard
                 key={entry.id}
@@ -301,9 +302,9 @@ function KanbanColumn({ id, title, icon, headerCls, entries, catLabel, currentEn
               </p>
             )}
           </div>
-        )}
-      </Droppable>
-    </div>
+        </div>
+      )}
+    </Droppable>
   )
 }
 
@@ -327,8 +328,62 @@ export function Maintenance() {
   const [recurrenceType,    setRecurrenceType]    = useState('months')
   const [recurrenceValue,   setRecurrenceValue]   = useState(3)
   const [deleteConfirmId,   setDeleteConfirmId]   = useState<number | null>(null)
-
   const allEntries = useLiveQuery(() => db.maintenance.orderBy('id').reverse().toArray())
+
+  // localEntries is the authoritative source for Kanban rendering.
+  // It mirrors allEntries except during a drag: dragPending.current=true blocks
+  // Dexie reactive updates from overriding the optimistic state we set in onDragEnd.
+  const [localEntries, setLocalEntries] = useState<MaintenanceEntry[]>([])
+  const dragPending = useRef(false)
+
+  // columnOrder tracks display order (array of IDs) within each column.
+  // It is the authoritative source for card positions; localEntries provides status.
+  const [columnOrder, setColumnOrder] = useState<Record<string, number[]>>({})
+
+  // Ref kept in sync by useMemo so useLayoutEffect can read current column arrays.
+  const columnArraysRef = useRef<{
+    planned: MaintenanceEntry[]; inProgress: MaintenanceEntry[]
+    done: MaintenanceEntry[];    archive:   MaintenanceEntry[]
+  }>({ planned: [], inProgress: [], done: [], archive: [] })
+
+  const dragResult = useRef<{
+    id: number; status: MaintenanceStatus; date?: string
+    srcCol: string; destCol: string; destIndex: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (!dragPending.current && allEntries !== undefined) {
+      setLocalEntries(allEntries)
+    }
+  }, [allEntries])
+
+  // Apply any pending drag result synchronously before the browser paints.
+  // useLayoutEffect with no deps runs after EVERY render — even the IDLE render
+  // DnD forces via flushSync — guaranteeing no visible snap-back.
+  useLayoutEffect(() => {
+    if (!dragResult.current) return
+    const pending = dragResult.current
+    dragResult.current = null
+
+    const cols: Record<string, MaintenanceEntry[]> = {
+      planned:    columnArraysRef.current.planned,
+      in_progress: columnArraysRef.current.inProgress,
+      done:       columnArraysRef.current.done,
+      archive:    columnArraysRef.current.archive,
+    }
+    const idsOf = (col: string) => (cols[col] ?? []).map(e => e.id!)
+
+    // Cross-column: update status + insert at correct position in destination
+    const srcIds  = idsOf(pending.srcCol).filter(id => id !== pending.id)
+    const destIds = idsOf(pending.destCol)
+    destIds.splice(pending.destIndex, 0, pending.id)
+    setLocalEntries(prev => prev.map(e =>
+      e.id === pending.id
+        ? { ...e, status: pending.status, ...(pending.date !== undefined ? { date: pending.date } : {}) }
+        : e
+    ))
+    setColumnOrder(prev => ({ ...prev, [pending.srcCol]: srcIds, [pending.destCol]: destIds }))
+  }) // intentionally no deps
 
   // Auto-open task when navigated from Dashboard with { state: { editId } }
   const handledEditRef = useRef(false)
@@ -370,35 +425,54 @@ export function Maintenance() {
   }, [allEntries])
 
   const { planned, inProgress, done, archive } = useMemo(() => {
-    const planned: MaintenanceEntry[] = []
-    const inProgress: MaintenanceEntry[] = []
-    const done: MaintenanceEntry[] = []
-    const archive: MaintenanceEntry[] = []
-    if (!allEntries) return { planned, inProgress, done, archive }
+    const rawPlanned: MaintenanceEntry[] = []
+    const rawInProgress: MaintenanceEntry[] = []
+    const rawDone: MaintenanceEntry[] = []
+    const rawArchive: MaintenanceEntry[] = []
 
-    const filtered = filterCat === 'all' ? allEntries : allEntries.filter(e => e.category === filterCat)
-
-    for (const entry of filtered) {
-      const status = entry.status ?? 'done'
-      if (entry.archivedAt) {
-        // Apply year filter to archive
-        if (filterYear === 'all' || entry.date?.startsWith(filterYear)) archive.push(entry)
-        continue
-      }
-      if (status === 'done' && entry.date && entry.date < archiveCutoff) {
-        // Apply year filter to auto-archived done entries
-        if (filterYear === 'all' || entry.date?.startsWith(filterYear)) archive.push(entry)
-        continue
-      }
-      if (status === 'planned') planned.push(entry)
-      else if (status === 'in_progress') inProgress.push(entry)
-      else {
-        // Apply year filter to recent "done" entries
-        if (filterYear === 'all' || entry.date?.startsWith(filterYear)) done.push(entry)
+    if (localEntries.length) {
+      const filtered = filterCat === 'all' ? localEntries : localEntries.filter(e => e.category === filterCat)
+      for (const entry of filtered) {
+        const status = entry.status ?? 'done'
+        if (entry.archivedAt) {
+          if (filterYear === 'all' || entry.date?.startsWith(filterYear)) rawArchive.push(entry)
+          continue
+        }
+        if (status === 'done' && entry.date && entry.date < archiveCutoff) {
+          if (filterYear === 'all' || entry.date?.startsWith(filterYear)) rawArchive.push(entry)
+          continue
+        }
+        if (status === 'planned') rawPlanned.push(entry)
+        else if (status === 'in_progress') rawInProgress.push(entry)
+        else {
+          if (filterYear === 'all' || entry.date?.startsWith(filterYear)) rawDone.push(entry)
+        }
       }
     }
-    return { planned, inProgress, done, archive }
-  }, [allEntries, filterCat, filterYear, archiveCutoff])
+
+    // Sort each column by columnOrder (preserves user drag order).
+    // Entries not yet in columnOrder fall to the end at natural DB order.
+    const applyOrder = (entries: MaintenanceEntry[], colId: string) => {
+      const order = columnOrder[colId]
+      if (!order || order.length === 0) return entries
+      const idToIdx = new Map(order.map((id, i) => [id, i]))
+      return [...entries].sort((a, b) => {
+        const ai = idToIdx.has(a.id!) ? idToIdx.get(a.id!)! : Infinity
+        const bi = idToIdx.has(b.id!) ? idToIdx.get(b.id!)! : Infinity
+        return ai - bi
+      })
+    }
+
+    const result = {
+      planned:    applyOrder(rawPlanned,    'planned'),
+      inProgress: applyOrder(rawInProgress, 'in_progress'),
+      done:       applyOrder(rawDone,       'done'),
+      archive:    applyOrder(rawArchive,    'archive'),
+    }
+    // Keep ref current so useLayoutEffect can read column arrays after next render
+    columnArraysRef.current = result
+    return result
+  }, [localEntries, filterCat, filterYear, archiveCutoff, columnOrder])
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -560,23 +634,51 @@ export function Maintenance() {
     toast(t('maintenance.unarchived'))
   }
 
-  async function onDragEnd(result: DropResult) {
+  function onDragEnd(result: DropResult) {
     if (!result.destination) return
-    if (result.source.droppableId === result.destination.droppableId) return
+    const { source, destination } = result
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return
+
     const id = parseInt(result.draggableId)
-    const newStatus = result.destination.droppableId as MaintenanceStatus
+
+    if (source.droppableId === destination.droppableId) {
+      // Within-column reorder: setColumnOrder directly — onDragEnd runs inside
+      // DnD's flushSync so the update is batched into the synchronous IDLE render,
+      // placing the card at the new index without any snap-back.
+      const colMap: Record<string, MaintenanceEntry[]> = {
+        planned:     columnArraysRef.current.planned,
+        in_progress: columnArraysRef.current.inProgress,
+        done:        columnArraysRef.current.done,
+        archive:     columnArraysRef.current.archive,
+      }
+      const ids = (colMap[source.droppableId] ?? []).map(e => e.id!)
+      const [movedId] = ids.splice(source.index, 1)
+      ids.splice(destination.index, 0, movedId)
+      setColumnOrder(prev => ({ ...prev, [source.droppableId]: ids }))
+      return
+    }
+
+    // Cross-column: update status in DB; useLayoutEffect repositions in dest column
+    const newStatus = destination.droppableId as MaintenanceStatus
     const now = new Date().toISOString()
     const completionDate = now.split('T')[0]
-    await db.maintenance.update(id, {
-      status: newStatus,
+
+    dragPending.current = true
+    dragResult.current = {
+      id, status: newStatus,
       date: newStatus === 'done' ? completionDate : undefined,
-      updatedAt: now,
-    })
-    toast.success(`→ ${t(`maintenance.statusLabels.${newStatus}`)}`)
-    if (newStatus === 'done') {
-      const movedEntry = await db.maintenance.get(id)
-      if (movedEntry) await createRecurringTask(movedEntry, completionDate)
+      srcCol: source.droppableId, destCol: destination.droppableId, destIndex: destination.index,
     }
+
+    db.maintenance.update(id, { status: newStatus, date: newStatus === 'done' ? completionDate : undefined, updatedAt: now })
+      .then(async () => {
+        dragPending.current = false
+        toast.success(`→ ${t(`maintenance.statusLabels.${newStatus}`)}`)
+        if (newStatus === 'done') {
+          const movedEntry = await db.maintenance.get(id)
+          if (movedEntry) await createRecurringTask(movedEntry, completionDate)
+        }
+      })
   }
 
   // ── Options ────────────────────────────────────────────────────────────────
@@ -613,32 +715,34 @@ export function Maintenance() {
     <div className="space-y-4">
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 flex-wrap">
+      <div className="flex items-center gap-2 p-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
         <span className="text-base font-semibold text-gray-900 dark:text-gray-100 flex-shrink-0">{t('nav.maintenance')}</span>
         <div className="w-px h-5 bg-gray-200 dark:bg-gray-700 flex-shrink-0" />
-        {[{ value: 'all', label: t('common.all') }, ...categoryOptions].map(opt => (
-          <button
-            key={opt.value}
-            onClick={() => setFilterCat(opt.value)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
-              filterCat === opt.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            {opt.value !== 'all' ? `${CAT_EMOJI[opt.value]} ${opt.label}` : opt.label}
-          </button>
-        ))}
+        {/* Horizontally scrollable category tabs */}
+        <div className="flex gap-1.5 overflow-x-auto flex-1 min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {[{ value: 'all', label: t('common.all') }, ...categoryOptions].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setFilterCat(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex-shrink-0 ${
+                filterCat === opt.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              {opt.value !== 'all' ? `${CAT_EMOJI[opt.value]} ${opt.label}` : opt.label}
+            </button>
+          ))}
+        </div>
         <select
           value={filterYear}
           onChange={e => setFilterYear(e.target.value)}
-          className="px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+          className="flex-shrink-0 px-3 py-[5px] text-sm appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
           title={t('maintenance.filterYear')}
         >
           <option value="all">{t('maintenance.allYears')}</option>
           {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
-        <div className="flex-1" />
         <Button icon={<PlusCircle className="w-4 h-4" />} onClick={() => openAdd('planned')}>
           {t('maintenance.newTask')}
         </Button>
